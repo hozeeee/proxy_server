@@ -4,25 +4,27 @@
     "target": "es2018",
     "module": "commonjs",
     "moduleResolution": "node",
+    "esModuleInterop": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "inlineSourceMap":true,
+    "inlineSourceMap": true,
     "noImplicitThis": true,
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "stripInternal": true,
     "skipLibCheck": true,
     "pretty": true,
     "declaration": true,
     "forceConsistentCasingInFileNames": true,
-    "typeRoots": [ "./typings", "./node_modules/@types"],
+    "resolveJsonModule": true,
+    "typeRoots": ["./typings", "./node_modules/@types"],
     "outDir": "dist",
-    "rootDir": "src"
+    "lib": ["ES2022", "DOM"]
   },
   "exclude": [
-    "*.js",
-    "*.ts",
     "dist",
     "node_modules",
-    "test"
+    "test",
+    "publish",
+    "forward_end"
   ]
 }
