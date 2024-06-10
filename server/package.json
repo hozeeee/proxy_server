@@ -40,7 +40,8 @@
     "lint": "mwts check",
     "lint:fix": "mwts fix",
     "ci": "npm run cov",
-    "build": "mwtsc --cleanOutDir"
+    "update:my_controller": "node create_my_controller.js",
+    "build": "npm run update:my_controller && mwtsc --cleanOutDir"
   },
   "repository": {
     "type": "git",

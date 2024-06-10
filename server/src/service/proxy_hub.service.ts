@@ -1,4 +1,5 @@
-import { Provide } from '@midwayjs/core';
+import { App, Provide } from '@midwayjs/core';
+import { Application as SocketApplication } from '@midwayjs/socketio';
 import http from 'http';
 import https from 'https';
 import httpProxy from 'http-proxy';
@@ -11,7 +12,8 @@ import type { ServerResponse, IncomingMessage, RequestOptions, Server as HttpSer
 import type { Duplex } from 'stream';
 // import { ForwardHttpController } from '../utils/forward_end';
 // import { ForwardHttpController } from '../../forward_end'
-import { ForwardHttpController } from 'forward_end';
+import { ForwardHttpController, getSingleton } from 'forward_end';
+import { DEVICE_LIST } from '../socket/forward_end.controller';
 
 /**
  * 说明:
@@ -21,6 +23,8 @@ import { ForwardHttpController } from 'forward_end';
 
 @Provide()
 export class ProxyHubService {
+  @App('socketIO')
+  socketApp: SocketApplication;
 
 
   dispenseHttps(req: InstanceType<typeof IncomingMessage>, clientSocket: Duplex, head: Buffer) {
@@ -48,40 +52,44 @@ export class ProxyHubService {
       return;
     }
 
+    // 通过 socket 发送到代理端
+    const deviceId = 'local_test'; // TODO:debug
+    const forwardHttpController = DEVICE_LIST.find(i => i.id === deviceId).forwardHttpController;
+    if (!forwardHttpController) return console.log('.....TODO:')
+    forwardHttpController.forwardHttpsReq({ req, socket: clientSocket, head });
 
-    const uuid = uuidCreator();
+    // const uuid = uuidCreator();
 
-    const dataSocket = this.choseForwardEnd();
+    // const dataSocket = this.choseForwardEnd();
 
-    dataSocket({
-      type: 'connect',
-      uuid,
-      protocol: 'https',
-      httpVersion: req.httpVersion,
-      headers: req.headers,
-      port: Number(port || '443'),
-      hostname,
-      head,
-    }, (cbData) => {
-      const { type, } = cbData;
+    // dataSocket({
+    //   type: 'connect',
+    //   uuid,
+    //   protocol: 'https',
+    //   httpVersion: req.httpVersion,
+    //   headers: req.headers,
+    //   port: Number(port || '443'),
+    //   hostname,
+    //   head,
+    // }, (cbData) => {
+    //   const { type, } = cbData;
 
-      if (type === 'data') {
-        const { data } = cbData;
-        clientSocket.write(data);
-        return;
-      }
+    //   if (type === 'data') {
+    //     const { data } = cbData;
+    //     clientSocket.write(data);
+    //     return;
+    //   }
+    //   if (type === 'end') {
+    //     clientSocket.end();
+    //     return;
+    //   }
 
-      if (type === 'end') {
-        clientSocket.end();
-        return;
-      }
+    // });
 
-    });
-
-    for (const event of ['close', 'data', 'drain', 'end', 'error', 'finish', 'pause', 'pipe', 'readable', 'resume', 'unpipe']) {
-      // TODO: type
-      clientSocket.on(event, (...args) => { dataSocket({ type: 'event', uuid, event, args, } as ISocketData_ServerEvent); });
-    }
+    // for (const event of ['close', 'data', 'drain', 'end', 'error', 'finish', 'pause', 'pipe', 'readable', 'resume', 'unpipe']) {
+    //   // TODO: type
+    //   clientSocket.on(event, (...args) => { dataSocket({ type: 'event', uuid, event, args, } as ISocketData_ServerEvent); });
+    // }
 
     // clientSocket.on('data', (buf: Buffer) => {
     //   dataSocket({
@@ -169,69 +177,11 @@ export class ProxyHubService {
       return;
     }
 
-    // const { headers, } = clientReq;
-    // const uuid = uuidCreator();
-    // const dataSocket = this.choseForwardEnd();
-
-    // const mockServer = new ForwardHttpController({
-    //   type: 'server',
-    //   params: { req: clientReq, res: clientRes },
-    // });
-    // const mockEnd = new ForwardHttpController({
-    //   type: 'end',
-    //   // params:
-    // });
-    // mockServer.setSender((data) => { mockEnd.receive(data); });
-    // mockEnd.setSender((data) => { mockServer.receive(data); });
-    // mockServer.startForward();
-    // mockEnd.startForward();
-
-
-    console.log('ForwardHttpController: ', ForwardHttpController)
-
-
-
-    // dataSocket({
-    //   type: 'connect',
-    //   uuid,
-    //   protocol: 'http',
-    //   option,
-    //   url,
-    // }, (cbData) => {
-    //   const { type, } = cbData;
-
-    //   if (type === 'writeHead') {
-    //     const { data } = cbData;
-    //     clientRes.writeHead(...data)
-    //     return;
-    //   }
-
-    //   if (type === 'data') {
-    //     const { data } = cbData;
-    //     clientRes.write(data);
-    //     return;
-    //   }
-
-    //   if (type === 'end') {
-    //     clientRes.end();
-    //     return;
-    //   }
-
-    // });
-
-    // clientReq.on('data', (buf: Buffer) => {
-    //   dataSocket({
-    //     type: 'data',
-    //     uuid,
-    //     data: buf,
-    //   });
-    // });
-    // clientReq.on('end', (buf: Buffer) => {
-    //   dataSocket({
-    //     type: 'end',
-    //     uuid,
-    //   });
-    // });
+    // 通过 socket 发送到代理端
+    const deviceId = 'local_test'; // TODO:debug
+    const forwardHttpController = DEVICE_LIST.find(i => i.id === deviceId).forwardHttpController;
+    if (!forwardHttpController) return console.log('.....TODO:')
+    forwardHttpController.forwardHttpReq({ req: clientReq, res: clientRes });
 
   }
 

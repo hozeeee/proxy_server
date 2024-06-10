@@ -11,6 +11,17 @@ export default defineConfig([
       file: 'dist/index.js',
       format: 'cjs'
     },
+    plugins: [],
+    external: ['./controller'],
+    treeshake: true,
+  },
+
+  {
+    input: './src/forward_programme.ts',
+    output: {
+      file: 'dist/forward_programme.js',
+      format: 'cjs'
+    },
     plugins: [
       typescript(),
       resolve(),

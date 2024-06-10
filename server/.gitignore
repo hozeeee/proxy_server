@@ -13,3 +13,4 @@ run/
 .tsbuildinfo.*
 
 typings/
+__*.controller.ts
