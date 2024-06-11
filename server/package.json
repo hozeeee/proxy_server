@@ -11,9 +11,8 @@
     "@midwayjs/socketio": "^3.16.2",
     "@midwayjs/web": "^3.12.0",
     "egg": "^2.0.0",
-    "http-proxy": "^1.18.1",
-    "nanoid": "^3.3.6",
-    "forward_end": "file:../forward_end"
+    "forward_end": "file:../forward_end",
+    "nanoid": "^3.3.6"
   },
   "devDependencies": {
     "@midwayjs/egg-ts-helper": "^1.0.1",

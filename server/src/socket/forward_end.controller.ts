@@ -36,20 +36,49 @@ export class ForwardEndDeviceSocketController {
 
   @OnWSConnection()
   async onConnectionMethod() {
-    // TODO:
-    console.log('onConnectionMethod', this.ctx.id);
+    console.log('onConnectionMethod', this.ctx.id); // TODO:del
 
-    const deviceId = 'local_test'; // TODO:debug
+    const deviceId: IDeviceId = 'local_test';
+    const deviceConfig = DEVICE_LIST.find(i => i.id === deviceId);
+    if (!deviceConfig) {
+      console.log(`找不到 ${deviceId} 配置`); // TODO: 发送通知
+      return;
+    }
+
+    /**
+     * TODO: 发送邮件/微信提醒
+     */
+
     const ws = Array.from(this.socketApp.of(`/${deviceId}`).sockets.values())[0];
-    console.log('=====(ws === this.ctx): ', ws === this.ctx)
     if (!ws) return console.log('.....TODO:')
-    const forwardHttpController = DEVICE_LIST.find(i => i.id === 'local_test').forwardHttpController;
-    forwardHttpController.useSocketIo(ws as any);
+
+    /**
+     * "代理转发"绑定通道。
+     */
+    deviceConfig.forwardHttpController.useSocketIo(ws as any);
+
+    // TODO: 后续扩展其他，例如: 远程控制，命令行转发，端口转发等。
   }
   @OnWSDisConnection()
   async onDisConnectionMethod() {
-    // TODO:
-    console.log('onDisConnectionMethod', this.ctx.id);
+    console.log('onDisConnectionMethod', this.ctx.id); // TODO:del
+
+    const deviceId: IDeviceId = 'local_test';
+    const deviceConfig = DEVICE_LIST.find(i => i.id === deviceId);
+    if (!deviceConfig) {
+      console.log(`找不到 ${deviceId} 配置`); // TODO: 发送通知
+      return;
+    }
+
+    /**
+     * TODO: 发送邮件/微信提醒
+     */
+
+    /**
+     * "代理转发"销毁。
+     */
+    deviceConfig.forwardHttpController.clear();
+
   }
 }
 

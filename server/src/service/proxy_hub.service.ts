@@ -2,15 +2,10 @@ import { App, Provide } from '@midwayjs/core';
 import { Application as SocketApplication } from '@midwayjs/socketio';
 import http from 'http';
 import https from 'https';
-import httpProxy from 'http-proxy';
 import net from 'net';
 import { URL } from 'url';
-import { nanoid as uuidCreator } from 'nanoid/non-secure';
-import { proxyServerPort as port, webServerPort } from '../config/port.config';
-import { mockRequest } from '../proxy_main/mockRemoteRequest'; // TODO:del
-import type { ServerResponse, IncomingMessage, RequestOptions, Server as HttpServer } from 'http';
+import type { ServerResponse, IncomingMessage, RequestOptions, } from 'http';
 import type { Duplex } from 'stream';
-import { ForwardHttpController, getSingleton } from 'forward_end';
 import { DEVICE_LIST } from '../socket/forward_end.controller';
 
 /**
@@ -52,7 +47,7 @@ export class ProxyHubService {
 
     // 通过 socket 发送到代理端
     const deviceId = 'local_test'; // TODO:debug
-    const forwardHttpController = DEVICE_LIST.find(i => i.id === deviceId).forwardHttpController;
+    const forwardHttpController = DEVICE_LIST.find(i => i.id === deviceId)?.forwardHttpController;
     if (!forwardHttpController) return console.log('.....TODO:')
     forwardHttpController.forwardHttpsReq({ req, socket: clientSocket, head });
   }
@@ -113,20 +108,11 @@ export class ProxyHubService {
 
     // 通过 socket 发送到代理端
     const deviceId = 'local_test'; // TODO:debug
-    const forwardHttpController = DEVICE_LIST.find(i => i.id === deviceId).forwardHttpController;
+    const forwardHttpController = DEVICE_LIST.find(i => i.id === deviceId)?.forwardHttpController;
     if (!forwardHttpController) return console.log('.....TODO:')
     forwardHttpController.forwardHttpReq({ req: clientReq, res: clientRes });
 
   }
-
-  /**
-   * 选择代理的客户端。
-   * TODO: 参数待定，不确定通过什么方式确定客户端
-   */
-  choseForwardEnd() {
-    return mockRequest;
-  }
-
 
 }
 

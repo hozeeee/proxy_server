@@ -96,6 +96,19 @@ export class ForwardHttpController {
 
 
     /**
+     * 清空数据
+     */
+    clear() {
+        for (const [_, cacheData] of Array.from(this.cacheMap.entries())) {
+            const { target } = cacheData;
+            if (!target) continue;
+            target.end();
+        }
+        this.cacheMap.clear();
+    }
+
+
+    /**
      * 直接使用 socket.io 的实例注入方法。
      */
     useSocketIo(socket: Socket) {
