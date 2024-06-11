@@ -10,8 +10,6 @@ import { proxyServerPort as port, webServerPort } from '../config/port.config';
 import { mockRequest } from '../proxy_main/mockRemoteRequest'; // TODO:del
 import type { ServerResponse, IncomingMessage, RequestOptions, Server as HttpServer } from 'http';
 import type { Duplex } from 'stream';
-// import { ForwardHttpController } from '../utils/forward_end';
-// import { ForwardHttpController } from '../../forward_end'
 import { ForwardHttpController, getSingleton } from 'forward_end';
 import { DEVICE_LIST } from '../socket/forward_end.controller';
 
@@ -57,70 +55,6 @@ export class ProxyHubService {
     const forwardHttpController = DEVICE_LIST.find(i => i.id === deviceId).forwardHttpController;
     if (!forwardHttpController) return console.log('.....TODO:')
     forwardHttpController.forwardHttpsReq({ req, socket: clientSocket, head });
-
-    // const uuid = uuidCreator();
-
-    // const dataSocket = this.choseForwardEnd();
-
-    // dataSocket({
-    //   type: 'connect',
-    //   uuid,
-    //   protocol: 'https',
-    //   httpVersion: req.httpVersion,
-    //   headers: req.headers,
-    //   port: Number(port || '443'),
-    //   hostname,
-    //   head,
-    // }, (cbData) => {
-    //   const { type, } = cbData;
-
-    //   if (type === 'data') {
-    //     const { data } = cbData;
-    //     clientSocket.write(data);
-    //     return;
-    //   }
-    //   if (type === 'end') {
-    //     clientSocket.end();
-    //     return;
-    //   }
-
-    // });
-
-    // for (const event of ['close', 'data', 'drain', 'end', 'error', 'finish', 'pause', 'pipe', 'readable', 'resume', 'unpipe']) {
-    //   // TODO: type
-    //   clientSocket.on(event, (...args) => { dataSocket({ type: 'event', uuid, event, args, } as ISocketData_ServerEvent); });
-    // }
-
-    // clientSocket.on('data', (buf: Buffer) => {
-    //   dataSocket({
-    //     type: 'data',
-    //     uuid,
-    //     data: buf,
-    //   });
-    // });
-    // clientSocket.on('end', () => {
-    //   dataSocket({
-    //     type: 'end',
-    //     uuid,
-    //   });
-    // });
-
-    // // 创建到目标服务器的连接
-    // const serverSocket = net.connect(+port, hostname, () => {
-    //   clientSocket.write(`${version} 200 Connection Established\r\n` +
-    //     // 'Proxy-agent: Node.js-Proxy\r\n' +
-    //     '\r\n');
-    //   serverSocket.write(head);
-    //   serverSocket.pipe(clientSocket);
-    //   clientSocket.pipe(serverSocket);
-    // });
-
-    // serverSocket.on('error', (err) => {
-    //   clientSocket.write(`${version} 500 ${err.message}\r\n`);
-    //   clientSocket.end();
-    // });
-
-
   }
 
   /**

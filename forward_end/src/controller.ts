@@ -20,6 +20,7 @@ export function getSingleton() {
 
 /**
  * TODO: 超时情况未考虑。
+ * 服务端超时、代理端超时 都需要考虑。
  */
 
 
@@ -114,38 +115,40 @@ export class ForwardHttpController {
      * 将请求的相关信息发送给代理端。
      */
     forwardHttpReq(params: { req: IncomingMessage; res: ServerResponse; }) {
-        const { req: clientReq, res: clientRes } = params;
-        if (!this.send) throw new Error('this.send is undefined');
-        if (!clientReq.url) throw new Error('req.url is undefined');
+        try {
+            const { req: clientReq, res: clientRes } = params;
+            if (!this.send) throw new Error('this.send is undefined');
+            if (!clientReq.url) throw new Error('req.url is undefined');
 
-        const uuid = uuidCreator();
-        /**
-         * 第二步，
-         * 发送自定义事件，
-         * 通知对方创建 http 请求。
-         */
-        const url = new URL(`http://${clientReq.url.replace('https://', '').replace('http://', '')}`);
-        const option: RequestOptions = {
-            method: clientReq.method,
-            headers: clientReq.headers,
-        }
-        this.send({ type: 'connect', uuid, protocol: 'http', option, url, });
-        this.cacheMap.set(uuid, { type: 'server', target: clientRes, });
-        /**
-         * 将特定事件发送到代理端。
-         * 
-         * 实测的坑: 不能把所有通过 for 循环注入所有事件。
-         * 原因一，会不生效，具体情况不太清楚。
-         * 原因二，有些事件之间是"互斥"，例如 'data' 和 'pause'、'readable'、'resume' 。
-         */
-        clientReq.on('data', (buf: Buffer) => {
-            const data: ISocketData = { type: 'event', uuid, event: 'data', args: [buf] as any };
-            this.send(data);
-        });
-        clientReq.on('end', () => {
-            const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
-            this.send(data);
-        });
+            const uuid = uuidCreator();
+            /**
+             * 第二步，
+             * 发送自定义事件，
+             * 通知对方创建 http 请求。
+             */
+            const url = new URL(`http://${clientReq.url.replace('https://', '').replace('http://', '')}`);
+            const option: RequestOptions = {
+                method: clientReq.method,
+                headers: clientReq.headers,
+            }
+            this.send({ type: 'connect', uuid, protocol: 'http', option, url, });
+            this.cacheMap.set(uuid, { type: 'server', target: clientRes, });
+            /**
+             * 将特定事件发送到代理端。
+             * 
+             * 实测的坑: 不能把所有通过 for 循环注入所有事件。
+             * 原因一，会不生效，具体情况不太清楚。
+             * 原因二，有些事件之间是"互斥"，例如 'data' 和 'pause'、'readable'、'resume' 。
+             */
+            clientReq.on('data', (buf: Buffer) => {
+                const data: ISocketData = { type: 'event', uuid, event: 'data', args: [buf] as any };
+                this.send(data);
+            });
+            clientReq.on('end', () => {
+                const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
+                this.send(data);
+            });
+        } catch (_) { }
     }
     /**
      * 第三步，
@@ -153,26 +156,41 @@ export class ForwardHttpController {
      * 在 receive 中触发。
      */
     private createHttpReq(_data: ISocketData) {
-        if (_data.type !== 'connect' || _data.protocol !== 'http') return;
-        const { uuid, url, option } = _data;
-        const proxyReq = http.request(url, option, (proxyRes) => {
-            // 发送自定义事件
-            this.send({ type: 'writeHead', uuid, data: [proxyRes.statusCode!, proxyRes.headers], });
-            /**
-             * 将特定事件发送到代理端。
-             * 实测的坑: 不能把所有通过 for 循环注入所有事件。理由上面写了。
-             */
-            proxyRes.on('data', (buf: Buffer) => {
-                const data: ISocketData = { type: 'event', uuid, event: 'data', args: [buf] as any };
-                this.send(data);
-            });
-            proxyRes.on('end', () => {
-                const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
-                this.send(data);
-            });
-        });
+        try {
+            if (_data.type !== 'connect' || _data.protocol !== 'http') return;
+            const { uuid, url, option } = _data;
 
-        this.cacheMap.set(uuid, { type: 'end', target: proxyReq });
+            /**
+             * 超时时间(不确定是否生效)
+             */
+            option.timeout = 10 * 1000;
+
+            const proxyReq = http.request(url, option, (proxyRes) => {
+                // 发送自定义事件
+                this.send({ type: 'writeHead', uuid, data: [proxyRes.statusCode!, proxyRes.headers], });
+                /**
+                 * 将特定事件发送到代理端。
+                 * 实测的坑: 不能把所有通过 for 循环注入所有事件。理由上面写了。
+                 */
+                proxyRes.on('data', (buf: Buffer) => {
+                    const data: ISocketData = { type: 'event', uuid, event: 'data', args: [buf] as any };
+                    this.send(data);
+                });
+                proxyRes.on('end', () => {
+                    const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
+                    this.send(data);
+                });
+            });
+
+            proxyReq.on('error', (err) => {
+                const data1: ISocketData = { type: 'writeHead', uuid, data: [500, `服务器错误: ${err.message}` as any] };
+                this.send(data1);
+                const data2: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
+                this.send(data2);
+            });
+
+            this.cacheMap.set(uuid, { type: 'end', target: proxyReq });
+        } catch (_) { }
     }
 
 
@@ -185,33 +203,35 @@ export class ForwardHttpController {
      * 将请求的相关信息发送给代理端。
      */
     forwardHttpsReq(params: { req: InstanceType<typeof IncomingMessage>; socket: Duplex, head: Buffer }) {
-        const { req: clientReq, socket: clientSocket, head } = params;
-        if (!this.send) throw new Error('this.send is undefined');
-        if (!clientReq.url) throw new Error('req.url is undefined');
+        try {
+            const { req: clientReq, socket: clientSocket, head } = params;
+            if (!this.send) throw new Error('this.send is undefined');
+            if (!clientReq.url) throw new Error('req.url is undefined');
 
-        const { port: _port, hostname } = new URL(`http://${clientReq.url}`);
-        const port = Number(_port || '443');
-        const uuid = uuidCreator();
-        const { httpVersion, headers } = clientReq;
-        /**
-         * 第二步，
-         * 发送自定义事件，
-         * 通知对方创建 https 连接。
-         */
-        this.send({ type: 'connect', uuid, protocol: 'https', head, port, hostname, httpVersion, headers });
-        this.cacheMap.set(uuid, { type: 'server', target: clientSocket, });
-        /**
-         * 将特定事件发送到代理端。
-         * 实测的坑: 不能把所有通过 for 循环注入所有事件。理由上面写了。
-         */
-        clientSocket.on('data', (buf: Buffer) => {
-            const data: ISocketData = { type: 'event', uuid, event: 'data', args: [buf] as any };
-            this.send(data);
-        });
-        clientSocket.on('end', () => {
-            const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
-            this.send(data);
-        });
+            const { port: _port, hostname } = new URL(`http://${clientReq.url}`);
+            const port = Number(_port || '443');
+            const uuid = uuidCreator();
+            const { httpVersion, headers } = clientReq;
+            /**
+             * 第二步，
+             * 发送自定义事件，
+             * 通知对方创建 https 连接。
+             */
+            this.send({ type: 'connect', uuid, protocol: 'https', head, port, hostname, httpVersion, headers });
+            this.cacheMap.set(uuid, { type: 'server', target: clientSocket, });
+            /**
+             * 将特定事件发送到代理端。
+             * 实测的坑: 不能把所有通过 for 循环注入所有事件。理由上面写了。
+             */
+            clientSocket.on('data', (buf: Buffer) => {
+                const data: ISocketData = { type: 'event', uuid, event: 'data', args: [buf] as any };
+                this.send(data);
+            });
+            clientSocket.on('end', () => {
+                const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
+                this.send(data);
+            });
+        } catch (_) { }
     }
     /**
      * 第三步，
@@ -219,36 +239,38 @@ export class ForwardHttpController {
      * 在 receive 中触发。
      */
     private createHttpsReq(_data: ISocketData) {
-        if (_data.type !== 'connect' || _data.protocol !== 'https') return;
-        const { uuid, head, port, hostname, httpVersion, headers } = _data;
-        const pointSocket = net.connect(port, hostname, () => {
-            /**
-             * 通知服务端给客户端写入头部。
-             */
-            const resHead = `HTTP/${httpVersion} 200 Connection Established\r\n` +
-                // 'Proxy-agent: Node.js-Proxy\r\n' +
-                '\r\n';
-            const _data: ISocketData = { type: 'event', uuid, event: 'data', args: [resHead] as any };
-            this.send(_data);
-            /**
-             * 写入来自客户端的头部 buffer 内容。
-             */
-            pointSocket.write(head);
-            /**
-             * 将特定事件发送到代理端。
-             * 实测的坑: 不能把所有通过 for 循环注入所有事件。理由上面写了。
-             */
-            pointSocket.on('data', (buf: Buffer) => {
-                const data: ISocketData = { type: 'event', uuid, event: 'data', args: [buf] as any };
-                this.send(data);
+        try {
+            if (_data.type !== 'connect' || _data.protocol !== 'https') return;
+            const { uuid, head, port, hostname, httpVersion, headers } = _data;
+            const pointSocket = net.connect(port, hostname, () => {
+                /**
+                 * 通知服务端给客户端写入头部。
+                 */
+                const resHead = `HTTP/${httpVersion} 200 Connection Established\r\n` +
+                    // 'Proxy-agent: Node.js-Proxy\r\n' +
+                    '\r\n';
+                const _data: ISocketData = { type: 'event', uuid, event: 'data', args: [resHead] as any };
+                this.send(_data);
+                /**
+                 * 写入来自客户端的头部 buffer 内容。
+                 */
+                pointSocket.write(head);
+                /**
+                 * 将特定事件发送到代理端。
+                 * 实测的坑: 不能把所有通过 for 循环注入所有事件。理由上面写了。
+                 */
+                pointSocket.on('data', (buf: Buffer) => {
+                    const data: ISocketData = { type: 'event', uuid, event: 'data', args: [buf] as any };
+                    this.send(data);
+                });
+                pointSocket.on('end', () => {
+                    const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
+                    this.send(data);
+                });
             });
-            pointSocket.on('end', () => {
-                const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
-                this.send(data);
-            });
-        });
 
-        this.cacheMap.set(uuid, { type: 'end', target: pointSocket });
+            this.cacheMap.set(uuid, { type: 'end', target: pointSocket });
+        } catch (_) { }
     }
 
 }
