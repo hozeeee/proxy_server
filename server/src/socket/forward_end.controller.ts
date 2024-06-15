@@ -1,6 +1,7 @@
 import { WSController, OnWSConnection, Inject, OnWSMessage, OnWSDisConnection, App, } from '@midwayjs/decorator';
 import { Context, Application as SocketApplication } from '@midwayjs/socketio';
 import { ForwardHttpController } from 'forward_end';
+import { NoticeService } from '../service/notice.service';
 /* 勿删! 用于匹配头部生成新 controller 文件 */
 
 
@@ -33,25 +34,29 @@ export class ForwardEndDeviceSocketController {
   ctx: Context;
   @App('socketIO')
   socketApp: SocketApplication;
+  @Inject()
+  noticeService: NoticeService;
+
+
 
   @OnWSConnection()
   async onConnectionMethod() {
-    console.log('onConnectionMethod', this.ctx.id); // TODO:del
-
     const deviceId: IDeviceId = 'local_test';
     const deviceConfig = DEVICE_LIST.find(i => i.id === deviceId);
     if (!deviceConfig) {
-      console.log(`找不到 ${deviceId} 配置`); // TODO: 发送通知
+      this.noticeService.onNormalError(`在 onConnectionMethod 找不到 ${deviceId} 设备 ID 的配置`);
+      return;
+    }
+    const ws = Array.from(this.socketApp.of(`/${deviceId}`).sockets.values())[0];
+    if (!ws) {
+      this.noticeService.onNormalError(`在 onConnectionMethod 找不到 ${deviceId} 设备 ID 的 socket`);
       return;
     }
 
     /**
-     * TODO: 发送邮件/微信提醒
+     * 设备上线通知
      */
-
-    const ws = Array.from(this.socketApp.of(`/${deviceId}`).sockets.values())[0];
-    if (!ws) return console.log('.....TODO:')
-
+    this.noticeService.onDeviceOnline(deviceId);
     /**
      * "代理转发"绑定通道。
      */
@@ -59,26 +64,27 @@ export class ForwardEndDeviceSocketController {
 
     // TODO: 后续扩展其他，例如: 远程控制，命令行转发，端口转发等。
   }
+
+
   @OnWSDisConnection()
   async onDisConnectionMethod() {
-    console.log('onDisConnectionMethod', this.ctx.id); // TODO:del
-
     const deviceId: IDeviceId = 'local_test';
     const deviceConfig = DEVICE_LIST.find(i => i.id === deviceId);
     if (!deviceConfig) {
-      console.log(`找不到 ${deviceId} 配置`); // TODO: 发送通知
+      this.noticeService.onNormalError(`在 onDisConnectionMethod 找不到 ${deviceId} 设备 ID 的配置`);
       return;
     }
 
     /**
-     * TODO: 发送邮件/微信提醒
+     * 设备离线通知
      */
-
+    this.noticeService.onDeviceOffline(deviceId);
     /**
      * "代理转发"销毁。
      */
     deviceConfig.forwardHttpController.clear();
 
   }
+
 }
 

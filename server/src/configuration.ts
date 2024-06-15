@@ -1,9 +1,9 @@
 import { App, Configuration, ILifeCycle, IMidwayContainer } from '@midwayjs/core';
 import { join } from 'path';
 import * as egg from '@midwayjs/web';
-// import { start as startHttpProxy } from './proxy_main';
 import { ProxyEntranceService } from './service/proxy_entrance.service';
 import * as socketio from '@midwayjs/socketio';
+import { downloadConfig, startClash } from './utils/clash_controller';
 
 
 @Configuration({
@@ -15,8 +15,6 @@ export class MainConfiguration implements ILifeCycle {
   app: egg.Application;
 
   async onReady() {
-    // startHttpProxy();
-
 
   }
 
@@ -24,6 +22,12 @@ export class MainConfiguration implements ILifeCycle {
   async onServerReady(container: IMidwayContainer) {
     const proxyEntranceService = await container.getAsync(ProxyEntranceService);
     proxyEntranceService.startServer();
+
+
+
+    // TODO:下载地址弄成配置文件
+    // await downloadConfig('https://a9255d35-f774-3cfe-9a91-abaadf3318f4.nginxcave.xyz/link/ZWwakjF4eVPCHwcg?clash=1');
+    startClash();
 
     if (this.app.config.env === 'local') return; /******** 调试分割线(下面正式代码，本地调试不会执行) ********/
 

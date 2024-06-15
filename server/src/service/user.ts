@@ -1,5 +1,6 @@
 import { Provide } from '@midwayjs/core';
 
+
 @Provide()
 export class UserService {
   async getUser(options: any) {

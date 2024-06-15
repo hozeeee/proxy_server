@@ -6,7 +6,11 @@ import net from 'net';
 import { URL } from 'url';
 import type { ServerResponse, IncomingMessage, RequestOptions, } from 'http';
 import type { Duplex } from 'stream';
+import { SocksProxyAgent } from 'socks-proxy-agent';
+import { SocksClient } from 'socks';
 import { DEVICE_LIST } from '../socket/forward_end.controller';
+import { clashHttpProxyPort, clashSocksProxyPort } from '../utils/clash_controller';
+
 
 /**
  * 说明:
@@ -31,16 +35,46 @@ export class ProxyHubService {
     const isUseLocal = false;
     if (isUseLocal) {
       const serverSocket = net.connect(port, hostname, () => {
-        clientSocket.write(`HTTP/${req.httpVersion} 200 Connection Established\r\n` +
-          // 'Proxy-agent: Node.js-Proxy\r\n' +
-          '\r\n');
+        // 数据对接
+        clientSocket.write(`HTTP/${req.httpVersion} 200 Connection Established\r\n\r\n`);
         serverSocket.write(head);
         serverSocket.pipe(clientSocket);
         clientSocket.pipe(serverSocket);
       });
+      // 错误处理
       serverSocket.on('error', (err) => {
         clientSocket.write(`HTTP/${req.httpVersion} 500 ${err.message}\r\n`);
         clientSocket.end();
+      });
+      clientSocket.on('error', (err) => { serverSocket.end(); });
+      return;
+    }
+
+
+    /**
+     * 测试 clash 代理。
+     */
+    const isUseClash = false;
+    if (isUseClash) {
+      SocksClient.createConnection({
+        proxy: { host: '127.0.0.1', port: clashSocksProxyPort, type: 5, /* SOCKS v5 */ },
+        command: 'connect',
+        destination: { host: hostname, port, },
+      }, (err, info) => {
+        if (err) {
+          clientSocket.end(`HTTP/${req.httpVersion} 500 ${err.message}\r\n`);
+          return;
+        }
+        // 数据对接
+        clientSocket.write(`HTTP/${req.httpVersion} 200 Connection Established\r\n\r\n`);
+        info.socket.write(head);
+        info.socket.pipe(clientSocket);
+        clientSocket.pipe(info.socket);
+        // 错误处理
+        info.socket.on('error', (err) => {
+          clientSocket.end(`HTTP/${req.httpVersion} 500 ${err.message}\r\n`);
+        });
+        clientSocket.on('error', (err) => { info.socket.end(); });
       });
       return;
     }
@@ -57,7 +91,7 @@ export class ProxyHubService {
    */
   dispenseHttp(clientReq: IncomingMessage, clientRes: ServerResponse) {
     const url = new URL(`http://${clientReq.url.replace('https://', '').replace('http://', '')}`);
-    const option: RequestOptions = {
+    const options: RequestOptions = {
       method: clientReq.method,
       headers: clientReq.headers,
     }
@@ -68,7 +102,7 @@ export class ProxyHubService {
      */
     const isUseLocal = false;
     if (isUseLocal) {
-      const serverReq = http.request(url, option, (proxyRes) => {
+      const serverReq = http.request(url, options, (proxyRes) => {
         clientRes.writeHead(proxyRes.statusCode, proxyRes.headers);
         proxyRes.pipe(clientRes);
       });
@@ -98,13 +132,39 @@ export class ProxyHubService {
       //   });
       //   serverReq.end();
       // });
-      // 错误捕捉
+      // 错误
       serverReq.on('error', (err) => {
         clientRes.writeHead(500);
         clientRes.end(`服务器错误: ${err.message}`);
       });
       return;
     }
+
+
+    /**
+     * 测试 clash 代理。
+     */
+    const isUseClash = false;
+    if (isUseClash) {
+      const _options: RequestOptions = {
+        ...options,
+        agent: new SocksProxyAgent(`socks5h://127.0.0.1:${clashSocksProxyPort}`),
+      };
+      const serverReq = http.request(url, _options, (proxyRes) => {
+        clientRes.writeHead(proxyRes.statusCode, proxyRes.headers);
+        proxyRes.pipe(clientRes);
+      });
+      clientReq.pipe(serverReq);
+      // 错误
+      serverReq.on('error', (err) => {
+        clientRes.writeHead(500);
+        clientRes.end(`服务器错误: ${err.message}`);
+      });
+      clientReq.on('error', () => { serverReq.end(); });
+      clientReq.on('end', () => { serverReq.end(); });
+      return;
+    }
+
 
     // 通过 socket 发送到代理端
     const deviceId = 'local_test'; // TODO:debug

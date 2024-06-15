@@ -1,7 +1,6 @@
 import { Inject, Provide } from '@midwayjs/core';
 import http from 'http';
 import https from 'https';
-import httpProxy from 'http-proxy';
 import net from 'net';
 import { URL } from 'url';
 import { proxyServerPort as port, webServerPort } from '../config/port.config';
@@ -13,7 +12,6 @@ let httpServer: http.Server<typeof http.IncomingMessage, typeof http.ServerRespo
 
 @Provide()
 export class ProxyEntranceService {
-
   @Inject()
   proxyHubService: ProxyHubService;
 

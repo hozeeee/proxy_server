@@ -14,3 +14,4 @@ run/
 
 typings/
 __*.controller.ts
+clash/*.yaml
