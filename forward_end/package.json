@@ -12,8 +12,8 @@
     "build:script": "rollup -c rollup.config.ts --configPlugin @rollup/plugin-typescript --bundleConfigAsCjs",
     "copy:dist": "node ./dist/on_build_end.js",
     "build": "npm run build:script && npm run copy:dist",
-    "dev": "npm run build && DEVICE_ID=local_test SERVER_HOST=127.0.0.1:8601 node ./dist/forward_programme.js",
-    "dev2": "cross-env DEVICE_ID=local_test SERVER_HOST=127.0.0.1:8601 tsc-watch -p ./tsconfig.json --outDir ./node_modules/_dist --module commonjs --onSuccess \"node ./node_modules/_dist/forward_programme.js\""
+    "dev": "npm run build && DEVICE_ID=local_test SERVER_HOST=127.0.0.1:8601 node ./dist/forward_main_programme.js",
+    "dev2": "cross-env DEVICE_ID=local_test SERVER_HOST=127.0.0.1:8601 tsc-watch -p ./tsconfig.json --outDir ./node_modules/_dist --module commonjs --onSuccess \"node ./node_modules/_dist/forward_main_programme.js\""
   },
   "keywords": [],
   "author": "",
@@ -30,6 +30,7 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.6",
+    "axios": "^1.7.2",
     "cross-env": "^7.0.3",
     "fs-extra": "^11.2.0",
     "nanoid": "^5.0.7",

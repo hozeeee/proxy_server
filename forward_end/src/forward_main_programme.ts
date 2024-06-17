@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client';
-import { ForwardHttpController, SOCKET_EVENT_NAME } from './controller';
+import { ForwardHttpController, } from './forward_http_controller';
+import { AxiosRequestController, } from './axios_request_controller';
 
 
 const SOCKET_PATH = process.env.DEVICE_ID;
@@ -22,13 +23,12 @@ function start() {
     });
 
 
-    const controller = new ForwardHttpController();
-    controller.useSocketIo(socket);
-    // controller.send = (data) => socket.emit(SOCKET_EVENT_NAME, data);
-    // socket.on(SOCKET_EVENT_NAME, (data) => {
-    //     console.log(SOCKET_EVENT_NAME)
-    //     controller.receive(data);
-    // });
+    const httpController = new ForwardHttpController();
+    httpController.useSocketIo(socket);
+
+    const axiosController = new AxiosRequestController();
+    axiosController.useSocketIo(socket);
+
 
 }
 

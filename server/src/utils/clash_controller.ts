@@ -10,7 +10,7 @@ const CLASH_DIR = join(__dirname, '../../clash');
 const CLASH_CONFIG_FILENAME = 'clash_config.yaml';
 const CLASH_RUN_FILENAME = 'clash-linux-amd64-v1.18.0';
 
-export const clashPort = 9090;
+export const clashControllerPort = 9090;
 export const clashHttpProxyPort = 7890;
 export const clashSocksProxyPort = 7891;
 
@@ -24,7 +24,7 @@ export function downloadConfig(url: string) {
       // 配置解析
       const config = yamlLoad(fileContent) as Record<string, any>;
       // 保证配置的端口是固定的
-      config['external-controller'] = `0.0.0.0:${clashPort}`;
+      config['external-controller'] = `0.0.0.0:${clashControllerPort}`;
       config['port'] = clashHttpProxyPort;
       config['socks-port'] = clashSocksProxyPort;
       // 写入文件
@@ -105,7 +105,7 @@ export async function getClashInfo(type: IInfoType, dnsName?: string, dnsType?: 
    */
 
   const dnsSearch = type === 'dns/query' ? `?${stringify({ name: dnsName, type: dnsType })}` : '';
-  const url = `http://127.0.0.1:${clashPort}/${type}${dnsSearch}`;
+  const url = `http://127.0.0.1:${clashControllerPort}/${type}${dnsSearch}`;
 
   try {
     const res = await axios<Record<string, any>>({ method: 'get', url, });
@@ -122,11 +122,11 @@ export async function getClashInfo(type: IInfoType, dnsName?: string, dnsType?: 
  */
 export async function switchClashProxy(name: string, group = '🔰国外流量') {
   group = encodeURIComponent(group);
-  const url = `http://127.0.0.1:${clashPort}/proxies/${group}`;
+  const url = `http://127.0.0.1:${clashControllerPort}/proxies/${group}`;
 
 
   try {
-    const res = await axios<Record<string, any>>({ method: 'get', url: `http://127.0.0.1:${clashPort}/proxies/${encodeURIComponent('B美国 02')}/delay?url=https://www.google.com&timeout=5000`, });
+    const res = await axios<Record<string, any>>({ method: 'get', url: `http://127.0.0.1:${clashControllerPort}/proxies/${encodeURIComponent('B美国 02')}/delay?url=https://www.google.com&timeout=5000`, });
     const json = res.data;
     console.log('delay: ', json)
   } catch (_) {
@@ -149,7 +149,7 @@ export async function switchClashProxy(name: string, group = '🔰国外流量')
  * 关闭特定(或所有)连接。
  */
 export async function closeClashConnection(id?: string) {
-  const url = `http://127.0.0.1:${clashPort}/connections${id ? '/' + id : ''}`;
+  const url = `http://127.0.0.1:${clashControllerPort}/connections${id ? '/' + id : ''}`;
 
   try {
     const res = await axios<string>({ method: 'delete', url, });

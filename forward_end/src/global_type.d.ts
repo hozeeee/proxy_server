@@ -1,5 +1,7 @@
 import type { ServerResponse, RequestOptions, IncomingMessage, Server as HttpServer } from 'http';
 import type { Socket as NetSocket } from 'net';
+import type { AxiosRequestConfig, AxiosResponse } from 'axios';
+
 
 declare global {
 
@@ -56,6 +58,23 @@ declare global {
   //   type: 'end';
   //   uuid: string;
   // }
+
+
+
+
+  /**
+   * 转发 axios 的请求的相关类型。
+   */
+  type ISocketDataToAxios_Req<D = any> = {
+    type: 'request';
+    config: AxiosRequestConfig<D>;
+  }
+  type ISocketDataToAxios_Res<T = any, D = any> = {
+    type: 'response';
+    data: AxiosResponse<T, D>;
+  }
+  type ISocketDataToAxios = ISocketDataToAxios_Req | ISocketDataToAxios_Res;
+
 }
 
 

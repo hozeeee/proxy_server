@@ -9,7 +9,7 @@ import type { Socket } from 'socket.io-client';
 import type { Duplex } from 'stream';
 
 
-export const SOCKET_EVENT_NAME = '__forward_end_data';
+const SOCKET_EVENT_NAME = '__forward_end_data';
 
 let _forwardHttpController: ForwardHttpController;
 export function getSingleton() {
@@ -35,18 +35,9 @@ type IOptions = {
  */
 export class ForwardHttpController {
 
-    /**
-     * 请求缓存。
-     * uuid 在服务端生成，后面的 uuid 都是它。
-     * 
-     * type 说明:
-     * 'server' 是服务器调用，接受客户端数据；
-     * 'end' 是代理端调用，发起请求。
-     */
-    private cacheMap: Map<string, {
-        type: 'server' | 'end';
-        target?: ServerResponse | ClientRequest | Duplex;
-    }> = new Map();
+    get socketEventName() {
+        return SOCKET_EVENT_NAME;
+    }
 
     /**
      * 用于接管 socket.emit('__forward_end_data', ...)
@@ -89,11 +80,57 @@ export class ForwardHttpController {
         } catch (_) { }
     };
 
+    /**
+     * 记录之前的 socket 和 on 回调。
+     * 当重复调用 useSocketIo 时，需要把旧的删除。
+     */
+    private oldSocket: Socket | undefined = undefined;
+    private oldSocketCallback: ((...args: any[]) => void) | undefined = undefined;
+
+    /**
+     * 直接使用 socket.io 的实例注入方法。
+     */
+    useSocketIo(socket: Socket) {
+        // 清空旧的回调
+        try {
+            if (this.oldSocket && this.oldSocketCallback) {
+                this.oldSocket.off(SOCKET_EVENT_NAME, this.oldSocketCallback);
+                this.oldSocket = undefined;
+                this.oldSocketCallback = undefined;
+            }
+        } catch (_) { }
+
+        // 记录
+        this.oldSocket = socket;
+        this.oldSocketCallback = (data) => {
+            this.receive(data);
+        }
+
+        // 配置
+        this.send = (data) => {
+            socket.emit(SOCKET_EVENT_NAME, data);
+        }
+        socket.on(SOCKET_EVENT_NAME, this.oldSocketCallback);
+    }
+
     constructor(options?: IOptions) {
         const { send, } = options || {};
         if (send) this.send = send;
     }
 
+
+    /**
+     * 请求缓存。
+     * uuid 在服务端生成，后面的 uuid 都是它。
+     * 
+     * type 说明:
+     * 'server' 是服务器调用，接受客户端数据；
+     * 'end' 是代理端调用，发起请求。
+     */
+    private cacheMap: Map<string, {
+        type: 'server' | 'end';
+        target?: ServerResponse | ClientRequest | Duplex;
+    }> = new Map();
 
     /**
      * 清空数据
@@ -108,17 +145,6 @@ export class ForwardHttpController {
     }
 
 
-    /**
-     * 直接使用 socket.io 的实例注入方法。
-     */
-    useSocketIo(socket: Socket) {
-        this.send = (data) => {
-            socket.emit(SOCKET_EVENT_NAME, data);
-        }
-        socket.on(SOCKET_EVENT_NAME, (data) => {
-            this.receive(data);
-        });
-    }
 
 
     /**

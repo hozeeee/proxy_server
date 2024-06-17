@@ -9,7 +9,8 @@ import { clashHttpProxyPort } from '../utils/clash_controller';
 
 
 // 配置代理地址
-const proxyURL = `http://127.0.0.1:${clashHttpProxyPort}`;
+// const proxyURL = `http://127.0.0.1:${clashHttpProxyPort}`;
+const proxyURL = `http://127.0.0.1:${8600}`;
 const httpAgent = new HttpProxyAgent(proxyURL);
 const httpsAgent = new HttpsProxyAgent(proxyURL);
 const axiosInstance = axios.create();
@@ -68,7 +69,12 @@ export class APIController {
   }
   @Get('/test4')
   async test4(): Promise<any> {
-    await axiosInstance.get('https://www.baidu.com').then(response => {
+    await axiosInstance.get('https://www.baidu.com',
+      {
+        headers: { 'proxy-device-id': 'local_test' },
+        params: { 'proxy-device-id': 'local_test_2' },
+      }
+    ).then(response => {
       console.log('HTTP Response-4:', response.data);
       return response.data;
     }).catch(error => {
