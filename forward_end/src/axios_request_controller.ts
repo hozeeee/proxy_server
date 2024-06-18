@@ -45,13 +45,17 @@ export class AxiosRequestController {
             }
         } catch (_) { }
 
-        // 记录
+        // 记录(用于清理)
         this.oldSocket = socket;
         this.oldSocketCallback = async (rawData: ISocketDataToAxios_Req, callback: ISocketCallback) => {
             const { type, config } = rawData;
             if (type !== 'request') return;
             const res = await axios.request(config);
-            callback({ type: 'response', data: res });
+            delete res.request; // 不删除会导致报错(循环引用)
+            callback({
+                type: 'response',
+                data: res
+            });
         }
 
         // 配置

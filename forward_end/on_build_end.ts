@@ -6,7 +6,7 @@ const COPY_FILE_LIST = [
 
   './README.md',
 ];
-const TARGET_DIR = '../midway_server/publish/forward_end';
+const TARGET_DIR = '../server/publish/forward_end';
 
 fs.ensureDirSync(TARGET_DIR);
 

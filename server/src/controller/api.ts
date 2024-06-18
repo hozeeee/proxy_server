@@ -1,11 +1,15 @@
 import { Inject, Controller, Post, Query, Get } from '@midwayjs/core';
 import { Context } from '@midwayjs/web';
 import { UserService } from '../service/user';
-import { getClashInfo, switchClashProxy } from '../utils/clash_controller';
+import { getClashInfo, switchClashProxy } from '../common/clash_controller';
 import axios from 'axios';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
-import { clashHttpProxyPort } from '../utils/clash_controller';
+import { clashHttpProxyPort } from '../common/clash_controller';
+import { io } from 'socket.io-client';
+import type { AxiosRequestConfig, AxiosResponse } from 'axios';
+
+const socket = io(`ws://127.0.0.1:8601/req_server`, { autoConnect: true });
 
 
 // 配置代理地址
@@ -92,6 +96,23 @@ export class APIController {
       console.error('HTTP Error:', error.message);
     });
     return 5
+  }
+
+
+  /**
+   * 测试 socket 连接发起请求。
+   */
+  @Get('/test_socket_req')
+  async test_socket_req(): Promise<any> {
+    const config: AxiosRequestConfig = {
+      url: 'https://4.ipw.cn/'
+    }
+    const res: AxiosResponse<any, any> = await new Promise((resolve) => {
+      socket.emit('request', 'local_test', config, (res: AxiosResponse<any, any>) => {
+        resolve(res)
+      });
+    });
+    return res;
   }
 
 }

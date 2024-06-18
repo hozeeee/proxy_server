@@ -8,8 +8,8 @@ import type { ServerResponse, IncomingMessage, RequestOptions, } from 'http';
 import type { Duplex } from 'stream';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { SocksClient } from 'socks';
-import { DEVICE_LIST } from '../socket/forward_end.controller';
-import { clashHttpProxyPort, clashSocksProxyPort } from '../utils/clash_controller';
+import { DEVICE_LIST } from '../common/device_config';
+import { clashHttpProxyPort, clashSocksProxyPort } from '../common/clash_controller';
 
 
 /**

@@ -1,6 +1,8 @@
 import { WSController, OnWSConnection, Inject, OnWSMessage, OnWSDisConnection, App, } from '@midwayjs/decorator';
 import { Context, Application as SocketApplication } from '@midwayjs/socketio';
 import { NoticeService } from '../service/notice.service';
+import type { AxiosRequestConfig } from 'axios';
+import { DEVICE_LIST, type IDeviceId } from '../common/device_config';
 
 
 /**
@@ -23,18 +25,36 @@ export class ReqServerSocketController {
   @OnWSConnection()
   async onConnectionMethod() {
 
+    /**
+     * TODO:
+     * 1. 订阅设备上/下线的通知
+     */
+
   }
 
 
   @OnWSDisConnection()
   async onDisConnectionMethod() {
 
+    /**
+     * TODO:
+     * 1. 销毁订阅设备上/下线的通知
+     */
+
   }
 
 
-  // on('xxx')
-  @OnWSMessage('xxx')
-  async onXxxx(data) {
+  /**
+   * 发送请求。
+   * 示例:
+   *   *.emit('request', <device_id>, config);
+   */
+  @OnWSMessage('request')
+  async handleRequest(deviceId: IDeviceId, config: AxiosRequestConfig) {
+    const device = DEVICE_LIST.find(i => i.id === deviceId);
+    if (!device?.axiosRequestController) return null;
+    const res = await device.axiosRequestController.request(config);
+    return res;
 
     /**
      * TODO: 制定数据格式、处理收到数据的行为

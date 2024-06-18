@@ -1,6 +1,6 @@
 import { App, Inject, Provide } from '@midwayjs/core';
-import type { IDeviceId } from '../socket/forward_end.controller';
-import { DEVICE_LIST } from '../socket/forward_end.controller';
+import type { IDeviceId } from '../common/device_config';
+import { DEVICE_LIST } from '../common/device_config';
 import { EmailService } from './email.service';
 
 

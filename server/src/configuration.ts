@@ -3,7 +3,7 @@ import { join } from 'path';
 import * as egg from '@midwayjs/web';
 import { ProxyEntranceService } from './service/proxy_entrance.service';
 import * as socketio from '@midwayjs/socketio';
-import { downloadConfig, startClash } from './utils/clash_controller';
+import { downloadConfig, startClash } from './common/clash_controller';
 
 
 @Configuration({
