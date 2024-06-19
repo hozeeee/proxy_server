@@ -8,18 +8,9 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { clashHttpProxyPort } from '../common/clash_controller';
 import { io } from 'socket.io-client';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
+import type { Socket as SocketIoClient } from 'socket.io-client';
 
-const socket = io(`ws://127.0.0.1:8601/req_server`, { autoConnect: true });
 
-
-// 配置代理地址
-// const proxyURL = `http://127.0.0.1:${clashHttpProxyPort}`;
-const proxyURL = `http://127.0.0.1:${8600}`;
-const httpAgent = new HttpProxyAgent(proxyURL);
-const httpsAgent = new HttpsProxyAgent(proxyURL);
-const axiosInstance = axios.create();
-axiosInstance.defaults.httpAgent = httpAgent;
-axiosInstance.defaults.httpsAgent = httpsAgent;
 
 
 @Controller('/api')
@@ -30,22 +21,6 @@ export class APIController {
   @Inject()
   userService: UserService;
 
-  @Get('/test1')
-  async test1(): Promise<any> {
-    const configs = await getClashInfo('configs');
-    const version = await getClashInfo('version');
-    const rules = await getClashInfo('rules');
-    const proxies = await getClashInfo('proxies');
-    const connections = await getClashInfo('connections');
-
-    return {
-      configs,
-      version,
-      rules,
-      proxies,
-      connections,
-    }
-  }
   @Get('/test11')
   async test11(): Promise<any> {
     const logs = await getClashInfo('logs');
@@ -61,58 +36,77 @@ export class APIController {
     return res
   }
 
-  @Get('/test3')
-  async test3(): Promise<any> {
-    await axios.get('https://www.baidu.com').then(response => {
-      console.log('HTTP Response-3:', response.data);
-      return response.data;
-    }).catch(error => {
-      console.error('HTTP Error:', error.message);
-    });
-    return 3
-  }
-  @Get('/test4')
-  async test4(): Promise<any> {
-    await axiosInstance.get('https://www.baidu.com',
+
+
+  /**
+   * 测试 axios 发起请求，
+   * 使用本地服务作为代理。
+   */
+  @Get('/test/local_axios_req')
+  async testLocalAxiosReq(): Promise<any> {
+    // const proxyURL = `http://127.0.0.1:${clashHttpProxyPort}`;  // 测试用 clash 代理
+    const proxyURL = `http://127.0.0.1:${8600}`;  // 测试用本服务代理
+    const httpAgent = new HttpProxyAgent(proxyURL);
+    const httpsAgent = new HttpsProxyAgent(proxyURL);
+    const axiosInstance = axios.create();
+    axiosInstance.defaults.httpAgent = httpAgent;
+    axiosInstance.defaults.httpsAgent = httpsAgent;
+    // const targetUrl = 'https://www.google.com';
+    const targetUrl = 'https://www.baidu.com';
+    const res = await axiosInstance.get(targetUrl,
       {
+        // 没用，如果是 https 请求，中间代理是拿不到任何有用信息
         headers: { 'proxy-device-id': 'local_test' },
         params: { 'proxy-device-id': 'local_test_2' },
       }
     ).then(response => {
-      console.log('HTTP Response-4:', response.data);
-      return response.data;
+      return response;
     }).catch(error => {
       console.error('HTTP Error:', error.message);
     });
-    return 4
+    if (res) delete res.request;
+    return res || 'err';
   }
 
-  @Get('/test5')
-  async test5(): Promise<any> {
-    await axiosInstance.get('https://www.google.com').then(response => {
-      console.log('HTTP Response-5:', response.data);
-      return response.data;
-    }).catch(error => {
-      console.error('HTTP Error:', error.message);
-    });
-    return 5
+  /**
+   * 测试查询 clash 的信息。
+   */
+  @Get('/test/get_clash_info')
+  async testGetClashInfo(): Promise<any> {
+    const configs = await getClashInfo('configs');
+    const version = await getClashInfo('version');
+    const rules = await getClashInfo('rules');
+    const proxies = await getClashInfo('proxies');
+    const connections = await getClashInfo('connections');
+    return {
+      configs,
+      version,
+      rules,
+      proxies,
+      connections,
+    }
   }
-
 
   /**
    * 测试 socket 连接发起请求。
    */
-  @Get('/test_socket_req')
+  @Get('/test/socket_req')
   async test_socket_req(): Promise<any> {
     const config: AxiosRequestConfig = {
-      url: 'https://4.ipw.cn/'
+      url: 'https://6.ipw.cn/'
     }
+    if (!this.socket)
+      this.socket = io(`ws://127.0.0.1:8601/req_server`, { autoConnect: true });
     const res: AxiosResponse<any, any> = await new Promise((resolve) => {
-      socket.emit('request', 'local_test', config, (res: AxiosResponse<any, any>) => {
+      this.socket.emit('request', 'local_test', config, (res: AxiosResponse<any, any>) => {
         resolve(res)
       });
     });
     return res;
   }
+  private socket: SocketIoClient;
+
+
+
 
 }
