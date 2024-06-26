@@ -2,6 +2,7 @@ import { App, Configuration, ILifeCycle, IMidwayContainer } from '@midwayjs/core
 import { join } from 'path';
 import * as egg from '@midwayjs/web';
 import { ProxyEntranceService } from './service/proxy_entrance.service';
+import { NativeWsService } from './service/native_ws.service';
 import * as socketio from '@midwayjs/socketio';
 import { downloadConfig, startClash } from './common/clash_controller';
 
@@ -22,6 +23,9 @@ export class MainConfiguration implements ILifeCycle {
   async onServerReady(container: IMidwayContainer) {
     const proxyEntranceService = await container.getAsync(ProxyEntranceService);
     proxyEntranceService.startServer();
+
+    const nativeWsService = await container.getAsync(NativeWsService);
+    nativeWsService.startServer();
 
 
 

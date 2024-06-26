@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client';
-import { ForwardHttpController, } from './forward_http_controller';
-import { AxiosRequestController, } from './axios_request_controller';
+import { HttpProxyController, } from './controller/http_proxy.controller';
+import { AxiosRequestController, } from './controller/axios_request.controller';
+import { TigervncForwardController, } from './controller/tigervnc_forward.controller';
 
 
 const SOCKET_PATH = process.env.DEVICE_ID;
@@ -23,12 +24,14 @@ function start() {
     });
 
 
-    const httpController = new ForwardHttpController();
+    const httpController = new HttpProxyController();
     httpController.useSocketIo(socket);
 
     const axiosController = new AxiosRequestController();
     axiosController.useSocketIo(socket);
 
+    const tigervncController = new TigervncForwardController();
+    tigervncController.useSocketIo(socket);
 
 }
 

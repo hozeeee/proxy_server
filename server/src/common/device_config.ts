@@ -1,11 +1,12 @@
-import { ForwardHttpController, AxiosRequestController } from 'forward_end';
+import { HttpProxyController, AxiosRequestController, TigervncForwardController } from 'forward_end';
 
 
 interface IDeviceItem<T extends string> {
   id: T;
   name: string;
-  forwardHttpController?: ForwardHttpController;
+  forwardHttpController?: HttpProxyController;
   axiosRequestController?: AxiosRequestController;
+  tigervncForwardController?: TigervncForwardController;
 }
 export type IDeviceId =
   'local_test' |
@@ -20,6 +21,7 @@ export const DEVICE_LIST: IDeviceItem<IDeviceId>[] = [
   { id: 'n2840', name: '村工控机', forwardHttpController: undefined, },
 ];
 for (const item of DEVICE_LIST) {
-  item.forwardHttpController = new ForwardHttpController();
+  item.forwardHttpController = new HttpProxyController();
   item.axiosRequestController = new AxiosRequestController();
+  item.tigervncForwardController = new TigervncForwardController();
 }

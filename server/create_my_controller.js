@@ -1,9 +1,9 @@
-// 本脚本会读取 ./src/socket/forward_end.controller.ts 的信息，生成 _proxy.controller.ts 文件。
+// 本脚本会读取 ./src/socket/device.controller.ts 的信息，生成 _proxy.controller.ts 文件。
 
 const fs = require('fs');
 
 const srcDir = 'src/socket';
-const srcFile = 'forward_end.controller.ts';
+const srcFile = 'device.controller.ts';
 
 const baseFileContent = fs.readFileSync(`${srcDir}/${srcFile}`).toString();
 

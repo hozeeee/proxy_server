@@ -9,13 +9,17 @@ import type { Socket } from 'socket.io-client';
 import type { Duplex } from 'stream';
 
 
-const SOCKET_EVENT_NAME = '__forward_end_data';
 
-let _forwardHttpController: ForwardHttpController;
-export function getSingleton() {
-    if (_forwardHttpController) return _forwardHttpController;
-    return new ForwardHttpController({});
-}
+/**
+ * 说明，
+ * 接受来自对端的 http 服务的请求数据，例如 on('data') ，
+ * 在此处创建 http(s) 请求，
+ * 同样的把 on('data') 的数据返回给对端。
+ */
+
+
+
+const SOCKET_EVENT_NAME = '__forward_end_data';
 
 
 /**
@@ -33,9 +37,9 @@ type IOptions = {
  * 用来接管 socket 的数据。
  * 无论是服务端还是代理端，都只有一个实例，用于对接 socket 即可。
  */
-export class ForwardHttpController {
+export class HttpProxyController {
 
-    get socketEventName() {
+    static get socketEventName() {
         return SOCKET_EVENT_NAME;
     }
 

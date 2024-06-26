@@ -42,6 +42,7 @@ export class ForwardEndDeviceSocketController {
      */
     deviceConfig.forwardHttpController.useSocketIo(ws as any);
     deviceConfig.axiosRequestController.useSocketIo(ws as any);
+    deviceConfig.tigervncForwardController.useSocketIo(ws as any);
 
     // TODO: 后续扩展其他，例如: 远程控制，命令行转发，端口转发等。
   }

@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 
 const COPY_FILE_LIST = [
-  './dist/forward_main_programme.js',
+  './dist/end_manager.js',
 
   './README.md',
 ];

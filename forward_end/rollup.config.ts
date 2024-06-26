@@ -12,14 +12,14 @@ export default defineConfig([
       format: 'cjs'
     },
     plugins: [],
-    external: ['./forward_http_controller', './axios_request_controller'],
+    external: ['./controller/http_proxy.controller', './controller/axios_request.controller', './controller/tigervnc_forward.controller'],
     treeshake: true,
   },
 
   {
-    input: './src/forward_main_programme.ts',
+    input: './src/end_manager.ts',
     output: {
-      file: 'dist/forward_main_programme.js',
+      file: 'dist/end_manager.js',
       format: 'cjs'
     },
     plugins: [
@@ -32,9 +32,9 @@ export default defineConfig([
     treeshake: true,
   },
   {
-    input: './src/forward_http_controller.ts',
+    input: './src/controller/http_proxy.controller.ts',
     output: {
-      file: 'dist/forward_http_controller.js',
+      file: 'dist/controller/http_proxy.controller.js',
       format: 'cjs'
     },
     plugins: [
@@ -47,9 +47,9 @@ export default defineConfig([
     treeshake: true,
   },
   {
-    input: './src/axios_request_controller.ts',
+    input: './src/controller/axios_request.controller.ts',
     output: {
-      file: 'dist/axios_request_controller.js',
+      file: 'dist/controller/axios_request.controller.js',
       format: 'cjs'
     },
     plugins: [
@@ -61,7 +61,21 @@ export default defineConfig([
     // external: ['wrtc', 'imap'],
     treeshake: true,
   },
-
+  {
+    input: './src/controller/tigervnc_forward.controller.ts',
+    output: {
+      file: 'dist/controller/tigervnc_forward.controller.js',
+      format: 'cjs'
+    },
+    plugins: [
+      typescript(),
+      resolve(),
+      json(),
+      commonjs(),
+    ],
+    // external: ['wrtc', 'imap'],
+    treeshake: true,
+  },
   {
     input: 'on_build_end.ts',
     output: {
