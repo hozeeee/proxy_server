@@ -58,7 +58,7 @@ export class ProxyEntranceService {
      * 端口绑定。
      */
     httpServer.listen(port, () => {
-      console.log(`http 代理服务: http://127.0.0.1:${port}`);
+      console.log(`http-proxy-server:    http://127.0.0.1:${port}`);
     });
   }
 

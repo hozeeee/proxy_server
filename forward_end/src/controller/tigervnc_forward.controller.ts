@@ -52,10 +52,7 @@ type ISocketCallback = (socketResp: ISocketDataToTigervncServer) => void;
  * 无论是服务端还是代理端，都只有一个实例，用于对接 socket 即可。
  */
 export class TigervncForwardController {
-
-  static get socketEventName() {
-    return SOCKET_EVENT_NAME;
-  }
+  static get socketEventName() { return SOCKET_EVENT_NAME; }
 
 
   /**
@@ -173,6 +170,15 @@ export class TigervncForwardController {
     }
     socket.on(SOCKET_EVENT_NAME, listener);
 
+    /**
+     * [被控制端]
+     * 断开了与服务器之间的连接，就把所有的 vnc 服务连接清空。
+     * 虽然服务端也会触发，但也不影响。
+     */
+    socket.on('disconnect', () => {
+      this.disconnectAllVnc();
+    });
+
     // 记录(用于清理)
     this.serverToEndSocket = socket;
     this.serverToEndSocketListener = listener;
@@ -275,7 +281,7 @@ export class TigervncForwardController {
       const hasToVncSocket = this.portSocketMap.has(port);
       if (hasToVncSocket) return { success: false, message: `端口(${port})已创建了连接`, };
 
-      const host = '113.65.33.166'; // TODO:恢复 '127.0.0.1';
+      const host = '59.41.68.253'; // TODO:恢复 '127.0.0.1';
       const target = net.createConnection(port, host, () => {
         console.log('connected to target: ', host, port);
       });
