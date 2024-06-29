@@ -1,6 +1,7 @@
 import { App, Configuration, ILifeCycle, IMidwayContainer } from '@midwayjs/core';
 import { join } from 'path';
 import * as egg from '@midwayjs/web';
+import * as staticFile from '@midwayjs/static-file';
 import { ProxyEntranceService } from './service/proxy_entrance.service';
 import { NativeWsService } from './service/native_ws.service';
 import * as socketio from '@midwayjs/socketio';
@@ -8,7 +9,7 @@ import { downloadConfig, startClash } from './common/clash_controller';
 
 
 @Configuration({
-  imports: [egg, socketio],
+  imports: [egg, staticFile, socketio],
   importConfigs: [join(__dirname, './config')],
 })
 export class MainConfiguration implements ILifeCycle {

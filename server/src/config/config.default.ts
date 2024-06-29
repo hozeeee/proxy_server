@@ -1,3 +1,4 @@
+import { join } from 'path';
 import { MidwayConfig, MidwayAppInfo } from '@midwayjs/core';
 import { webServerPort as port } from './port.config';
 
@@ -12,6 +13,14 @@ export default (appInfo: MidwayAppInfo) => {
     //   csrf: false,
     // },
 
+    staticFile: {
+      dirs: {
+        default: {
+          prefix: '/',
+          dir: join(__dirname, '../../publish'),
+        },
+      },
+    },
 
     socketIO: {
       cors: {
