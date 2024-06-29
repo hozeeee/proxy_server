@@ -8,8 +8,9 @@ const srcFile = 'device.controller.ts';
 const baseFileContent = fs.readFileSync(`${srcDir}/${srcFile}`).toString();
 
 // 匹配设备列表的配置
+const deviceListFile = fs.readFileSync('src/common/device_config.ts').toString();
 const deviceListReg = /export const DEVICE_LIST: IDeviceItem<IDeviceId>\[\] = (\[)([\s\S]+?)(\]);/gm;
-const dlMatchRes = Array.from(baseFileContent.matchAll(deviceListReg));
+const dlMatchRes = Array.from(deviceListFile.matchAll(deviceListReg));
 const deviceList = eval(dlMatchRes[0][1] + dlMatchRes[0][2] + dlMatchRes[0][3]);
 
 // 基础 controller 的配置
@@ -26,8 +27,6 @@ const headerTxt = hMatchRes[0][1];
 const devDeviceId = deviceList[0].id; // 第一个是调试设备
 let res = `/* 此文件由 ${__filename} 生成 */\n\n`;
 res += headerTxt;
-res += `import { DEVICE_LIST } from './${srcFile.replace('.ts', '')}';\n`; // 源文件的部分内容
-res += `import type { IDeviceId } from './${srcFile.replace('.ts', '')}';\n`; // 源文件的部分内容
 res += '\n'
 for (let idx = 1, len = deviceList.length; idx < len; idx++) {
   const device = deviceList[idx];
