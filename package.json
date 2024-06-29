@@ -8,7 +8,7 @@
     "install:forward_end": "cd forward_end && npm install",
     "postinstall": "npm run install:server && npm run install:forward_end",
     "build:server": "cd server && npm run build",
-    "build:forward_end": "cd forward_end && npm run build && npm run install:server",
+    "build:forward_end": "cd forward_end && npm run build && npm i",
     "build": "npm run build:forward_end && npm run build:server",
     "start:server": "cd server && npm run start",
     "docker:build": "docker build --pull --rm -f \"Dockerfile\" -t hozeee/proxy_server:$npm_package_version \".\"",
