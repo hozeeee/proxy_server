@@ -29,10 +29,13 @@ export class ProxyEntranceService {
          */
         const gotoWebServer = clientReq.url.startsWith('/');
         if (gotoWebServer) {
-          const webProxyReq = http.request({ ...clientReq, port: webServerPort }, (proxyResp) => {
-            clientRes.writeHead(proxyResp.statusCode, proxyResp.headers);
-            proxyResp.pipe(clientRes);
-          });
+          const webProxyReq = http.request(
+            `http://127.0.0.1:${webServerPort}${clientReq.url}`,
+            { ...clientReq, },
+            (proxyResp) => {
+              clientRes.writeHead(proxyResp.statusCode, proxyResp.headers);
+              proxyResp.pipe(clientRes);
+            });
           clientReq.pipe(webProxyReq);
           webProxyReq.on('error', (err) => {
             clientRes.writeHead(500);

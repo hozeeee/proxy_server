@@ -16,7 +16,6 @@ export class ProxyMiddleware implements IMiddleware<Context, NextFunction> {
 
 
       const { req, res } = ctx;
-      console.log('===', req, res)
 
 
       let option = new URL(req.url) as any;
