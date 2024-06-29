@@ -4,15 +4,16 @@ import fs from 'fs-extra';
 import axios from 'axios';
 import { stringify } from 'query-string';
 import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
+import { CLASH_HTTP_PROXY_PORT, CLASH_SOCKS_PROXY_PORT } from '../config/port.config';
 
 
 const CLASH_DIR = join(__dirname, '../../clash');
 const CLASH_CONFIG_FILENAME = 'clash_config.yaml';
 const CLASH_RUN_FILENAME = 'clash-linux-amd64-v1.18.0';
 
-export const clashControllerPort = 9090;
-export const clashHttpProxyPort = 7890;
-export const clashSocksProxyPort = 7891;
+const clashControllerPort = 9090;
+const clashHttpProxyPort = CLASH_HTTP_PROXY_PORT;
+const clashSocksProxyPort = CLASH_SOCKS_PROXY_PORT;
 
 /**
  * 下载配置文件。

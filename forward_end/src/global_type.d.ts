@@ -71,7 +71,9 @@ declare global {
   }
   type ISocketDataToAxios_Res<T = any, D = any> = {
     type: 'response';
-    data: AxiosResponse<T, D>;
+    data: AxiosResponse<T, D> | null;
+    success: boolean;
+    message: string;
   }
   type ISocketDataToAxios = ISocketDataToAxios_Req | ISocketDataToAxios_Res;
 

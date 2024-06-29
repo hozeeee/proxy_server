@@ -8,7 +8,13 @@ interface IDeviceItem<T extends string> {
   axiosRequestController?: AxiosRequestController;
   tigervncForwardController?: TigervncForwardController;
 }
+
 export type IDeviceId =
+  // 使用本服务发起请求
+  'server_local' |
+  // 使用 clash 发起请求
+  'clash' |
+  // 普通的代理设备
   'local_test' |
   'n2840';
 

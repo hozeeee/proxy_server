@@ -5,10 +5,11 @@ import { getClashInfo, switchClashProxy } from '../common/clash_controller';
 import axios from 'axios';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
-import { clashHttpProxyPort } from '../common/clash_controller';
 import { io } from 'socket.io-client';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import type { Socket as SocketIoClient } from 'socket.io-client';
+import { createConnectSocket } from '../test_demo/socket_connect_to_here';
+import { CLASH_HTTP_PROXY_PORT } from '../config/port.config';
 
 
 
@@ -44,7 +45,7 @@ export class APIController {
    */
   @Get('/test/local_axios_req')
   async testLocalAxiosReq(): Promise<any> {
-    // const proxyURL = `http://127.0.0.1:${clashHttpProxyPort}`;  // 测试用 clash 代理
+    // const proxyURL = `http://127.0.0.1:${CLASH_HTTP_PROXY_PORT}`;  // 测试用 clash 代理
     const proxyURL = `http://127.0.0.1:${8600}`;  // 测试用本服务代理
     const httpAgent = new HttpProxyAgent(proxyURL);
     const httpsAgent = new HttpsProxyAgent(proxyURL);
@@ -89,6 +90,8 @@ export class APIController {
 
   /**
    * 测试 socket 连接发起请求。
+   * this.socket.emit('request_axios', ...) 返回的是 AxiosResponse ，
+   * 即使是自定义的错误也封装一样的结构，目前自定义的错误也用 500。
    */
   @Get('/test/socket_req')
   async test_socket_req(): Promise<any> {
@@ -96,17 +99,15 @@ export class APIController {
       url: 'https://6.ipw.cn/'
     }
     if (!this.socket)
-      this.socket = io(`ws://127.0.0.1:8601/req_server`, { autoConnect: true });
+      this.socket = io(`ws://127.0.0.1:8601/proxy_socket`, { autoConnect: true });
     const res: AxiosResponse<any, any> = await new Promise((resolve) => {
-      this.socket.emit('request', 'local_test', config, (res: AxiosResponse<any, any>) => {
+      this.socket.emit('request_axios', 'local_test', config, (res: AxiosResponse<any, any>) => {
         resolve(res)
       });
     });
     return res;
   }
   private socket: SocketIoClient;
-
-
 
 
 }

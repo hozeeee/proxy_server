@@ -27,10 +27,10 @@ export class NoticeService {
     // TODO:
 
     // 邮件
-    // this.emailService.send(
-    //   `[预约系统] 代理设备接入系统(${device?.name})`,
-    //   ` <h1>日志内容：</h1></br>${''}`
-    // );
+    this.emailService.send(
+      `[代理系统] 代理设备接入系统(${device?.name})`,
+      ` <h1>日志内容：</h1></br>${'TODO:'}`
+    );
   }
 
   /**
@@ -46,7 +46,7 @@ export class NoticeService {
   onNormalError(msg: string) {
     // 邮件
     this.emailService.send(
-      `[预约系统] 普通错误日志`,
+      `[代理系统] 普通错误日志`,
       ` <h1>日志内容：</h1></br>${msg}`
     );
   }

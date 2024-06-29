@@ -22,21 +22,6 @@ import type { IDeviceId } from '../common/device_config';
  */
 
 
-/**
- * TODO:
- * 测试列表：
- *   [√] 1. 前端页面关闭，后端&终端是否会收到断开指令。
- *   [√] 2. 前端重复对相同设备的 vnc 服务发送连接，需要禁止。
- *   [√] 3. 前端手动发送 close ，是否生效。
- *   [√] 4. 服务器意外关闭，终端是否会收到断开指令。
- *   [√] 5. 服务器意外关闭，终端是否会清空对 vnc 服务的连接。
- * // TODO: 需要真实的机器把网线测试
- *   [ ] 6. 终端断开连接，机器没有重启，是否会重连。
- *   [ ] 7. 终端断开连接，机器没有重启，此时服务器&前端两个 socket 会断开吗。
- *   [ ] 8. 终端断开连接，机器没有重启，对 vnc 服务器的连接是否有断开。
- */
-
-
 
 // 防止重复启动
 let _server: http.Server<typeof IncomingMessage, typeof ServerResponse> | undefined = undefined;

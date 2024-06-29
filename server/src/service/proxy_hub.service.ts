@@ -9,7 +9,7 @@ import type { Duplex } from 'stream';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { SocksClient } from 'socks';
 import { DEVICE_LIST } from '../common/device_config';
-import { clashHttpProxyPort, clashSocksProxyPort } from '../common/clash_controller';
+import { CLASH_SOCKS_PROXY_PORT } from '../config/port.config';
 
 
 /**
@@ -57,7 +57,7 @@ export class ProxyHubService {
     const isUseClash = false;
     if (isUseClash) {
       SocksClient.createConnection({
-        proxy: { host: '127.0.0.1', port: clashSocksProxyPort, type: 5, /* SOCKS v5 */ },
+        proxy: { host: '127.0.0.1', port: CLASH_SOCKS_PROXY_PORT, type: 5, /* SOCKS v5 */ },
         command: 'connect',
         destination: { host: hostname, port, },
       }, (err, info) => {
@@ -148,7 +148,7 @@ export class ProxyHubService {
     if (isUseClash) {
       const _options: RequestOptions = {
         ...options,
-        agent: new SocksProxyAgent(`socks5h://127.0.0.1:${clashSocksProxyPort}`),
+        agent: new SocksProxyAgent(`socks5h://127.0.0.1:${CLASH_SOCKS_PROXY_PORT}`),
       };
       const serverReq = http.request(url, _options, (proxyRes) => {
         clientRes.writeHead(proxyRes.statusCode, proxyRes.headers);

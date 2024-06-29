@@ -42,6 +42,25 @@ import type { Socket as INetSocket } from 'net';
  */
 
 
+
+
+/**
+ * TODO:
+ * 测试列表：
+ *   [√] 1. 前端页面关闭，后端&终端是否会收到断开指令。
+ *   [√] 2. 前端重复对相同设备的 vnc 服务发送连接，需要禁止。
+ *   [√] 3. 前端手动发送 close ，是否生效。
+ *   [√] 4. 服务器意外关闭，终端是否会收到断开指令。
+ *   [√] 5. 服务器意外关闭，终端是否会清空对 vnc 服务的连接。
+ * // TODO: 需要真实的机器把网线测试
+ *   [ ] 6. 终端断开连接，机器没有重启，是否会重连。
+ *   [ ] 7. 终端断开连接，机器没有重启，此时服务器&前端两个 socket 会断开吗。
+ *   [ ] 8. 终端断开连接，机器没有重启，对 vnc 服务器的连接是否有断开。
+ */
+
+
+
+
 const SOCKET_EVENT_NAME = '__tigervnc_forward';
 
 
@@ -281,7 +300,7 @@ export class TigervncForwardController {
       const hasToVncSocket = this.portSocketMap.has(port);
       if (hasToVncSocket) return { success: false, message: `端口(${port})已创建了连接`, };
 
-      const host = '59.41.68.253'; // TODO:恢复 '127.0.0.1';
+      const host = '127.0.0.1';
       const target = net.createConnection(port, host, () => {
         console.log('connected to target: ', host, port);
       });
