@@ -18,6 +18,9 @@ WORKDIR /my_project
 # COPY --chmod=777 . /my_project/
 COPY . /my_project/
 
+RUN npm i pm2 -g
+
+
 # npm 镜像源更换
 # 腾讯: http://mirrors.cloud.tencent.com/npm
 # 华为: https://mirrors.huaweicloud.com/repository/npm
@@ -26,7 +29,6 @@ COPY . /my_project/
 RUN npm config set registry=https://registry.npm.taobao.org
 
 
-RUN npm i pm2 -g
 # 安装项目依赖
 RUN npm i \
   && npm run build
