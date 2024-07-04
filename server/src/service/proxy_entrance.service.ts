@@ -60,7 +60,7 @@ export class ProxyEntranceService {
     /**
      * 端口绑定。
      */
-    httpServer.listen(port, () => {
+    httpServer.listen(port, '0.0.0.0', () => {
       console.log(`http-proxy-server:    http://127.0.0.1:${port}`);
     });
   }
