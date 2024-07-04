@@ -45,15 +45,15 @@ export class APIController {
    */
   @Get('/test/local_axios_req')
   async testLocalAxiosReq(): Promise<any> {
-    // const proxyURL = `http://127.0.0.1:${CLASH_HTTP_PROXY_PORT}`;  // 测试用 clash 代理
-    const proxyURL = `http://127.0.0.1:${8600}`;  // 测试用本服务代理
+    const proxyURL = `http://127.0.0.1:${CLASH_HTTP_PROXY_PORT}`;  // 测试用 clash 代理
+    // const proxyURL = `http://127.0.0.1:${8600}`;  // 测试用本服务代理
     const httpAgent = new HttpProxyAgent(proxyURL);
     const httpsAgent = new HttpsProxyAgent(proxyURL);
     const axiosInstance = axios.create();
     axiosInstance.defaults.httpAgent = httpAgent;
     axiosInstance.defaults.httpsAgent = httpsAgent;
-    // const targetUrl = 'https://www.google.com';
-    const targetUrl = 'https://www.baidu.com';
+    const targetUrl = 'https://www.google.com';
+    // const targetUrl = 'https://www.baidu.com';
     const res = await axiosInstance.get(targetUrl,
       {
         // 没用，如果是 https 请求，中间代理是拿不到任何有用信息

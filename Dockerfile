@@ -2,6 +2,8 @@ FROM node:18.16.1-bullseye
 # FROM node:latest
 ENV TZ="Asia/Shanghai"
 
+# clash 配置下载地址
+ENV CLASH_CONFIG_URL="https://a9255d35-f774-3cfe-9a91-abaadf3318f4.nginxcave.xyz/link/ZWwakjF4eVPCHwcg?clash=1"
 
 # # 拷贝中文字体包
 # RUN if [ ! -d "/usr/share/fonts/zh_CN" ]; then mkdir /usr/share/fonts/zh_CN; fi
@@ -23,6 +25,8 @@ COPY . /my_project/
 # 官方: https://registry.npmjs.org
 RUN npm config set registry=https://registry.npm.taobao.org
 
+
+RUN npm i pm2 -g
 # 安装项目依赖
 RUN npm i \
   && npm run build

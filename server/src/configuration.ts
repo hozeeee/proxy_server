@@ -30,8 +30,6 @@ export class MainConfiguration implements ILifeCycle {
 
 
 
-    // TODO:下载地址弄成配置文件
-    // await downloadConfig('https://a9255d35-f774-3cfe-9a91-abaadf3318f4.nginxcave.xyz/link/ZWwakjF4eVPCHwcg?clash=1');
     startClash();
 
     if (this.app.config.env === 'local') return; /******** 调试分割线(下面正式代码，本地调试不会执行) ********/

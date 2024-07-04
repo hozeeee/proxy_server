@@ -19,6 +19,7 @@ const clashSocksProxyPort = CLASH_SOCKS_PROXY_PORT;
  * 下载配置文件。
  */
 export function downloadConfig(url: string) {
+  console.log(`clash 配置地址: ${url}`);
   return axios({ method: 'get', url, })
     .then((res) => {
       const fileContent: string = res.data;
@@ -35,6 +36,7 @@ export function downloadConfig(url: string) {
     })
     .catch((err) => {
       console.error(`clash 配置文件下载失败: ${err}`);
+      throw err;
     });
 }
 
@@ -45,24 +47,44 @@ export function downloadConfig(url: string) {
 function isRunningClash() {
   try {
     const pm2ListRes = execSync('pm2 list', { encoding: 'utf8' });
-    if (pm2ListRes.includes(CLASH_RUN_FILENAME)) return true;
-  } catch (_) { }
+    if (pm2ListRes.includes(CLASH_RUN_FILENAME)) {
+      console.log('clash 已启动');
+      return true;
+    }
+  } catch (err: any) {
+    console.log(`clash 启动失败: ${err?.message || err}`);
+    return false;
+  }
+}
+
+/**
+ * 判断配置文件是否存在。
+ */
+async function isConfigFileExists() {
+  try {
+    const _path = join(CLASH_DIR, CLASH_CONFIG_FILENAME);
+    const exists = await fs.pathExists(_path);
+    return exists;
+  } catch (err) { }
   return false;
 }
 
 /**
  * 启动 clash 服务。
  */
-export function startClash() {
-  // TODO: 判断配置文件是否存在
-
-  // 已经启动了
-  const isRunning = isRunningClash();
-  if (isRunning) return true;
-  // 启动&错误捕抓
+export async function startClash() {
   try {
+    // 配置文件下载
+    const exists = await isConfigFileExists();
+    if (!exists)
+      await downloadConfig(process.env.CLASH_CONFIG_URL);
+
+    // 已经启动了
+    const isRunning = isRunningClash();
+    if (isRunning) return true;
+    // 启动
     execSync(`pm2 start ${join(CLASH_DIR, CLASH_RUN_FILENAME)} --name ${CLASH_RUN_FILENAME} -- -f ${join(CLASH_DIR, CLASH_CONFIG_FILENAME)}`);
-    console.log('clash 启动成功')
+    console.log('clash 启动成功');
     return isRunningClash();
   } catch (_) {
     return false;
@@ -129,18 +151,18 @@ export async function switchClashProxy(name: string, group = '🔰国外流量')
   try {
     const res = await axios<Record<string, any>>({ method: 'get', url: `http://127.0.0.1:${clashControllerPort}/proxies/${encodeURIComponent('B美国 02')}/delay?url=https://www.google.com&timeout=5000`, });
     const json = res.data;
-    console.log('delay: ', json)
+    console.log('delay: ', json) // TODO:del
   } catch (_) {
-    console.log('delay-err: ', _)
+    console.log('delay-err: ', _) // TODO:del
   }
 
   try {
     const res = await axios.put<string>(url, { name });
     const json = res.data;
-    console.log('switchClashProxy-success: ', typeof json, json)
+    console.log('switchClashProxy-success: ', typeof json, json) // TODO:del
     return json;
   } catch (_) {
-    console.log('switchClashProxy-err: ', _)
+    console.log('switchClashProxy-err: ', _) // TODO:del
     return null;
   }
 }
