@@ -29,6 +29,7 @@ export function downloadConfig(url: string) {
       config['external-controller'] = `0.0.0.0:${clashControllerPort}`;
       config['port'] = clashHttpProxyPort;
       config['socks-port'] = clashSocksProxyPort;
+      config['allow-lan'] = true; // 其他机器能用到
       // 写入文件
       const yamlStr = yamlDump(config);
       const filePath = join(CLASH_DIR, CLASH_CONFIG_FILENAME)

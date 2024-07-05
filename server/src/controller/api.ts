@@ -46,6 +46,7 @@ export class APIController {
   @Get('/test/local_axios_req')
   async testLocalAxiosReq(): Promise<any> {
     const proxyURL = `http://127.0.0.1:${CLASH_HTTP_PROXY_PORT}`;  // 测试用 clash 代理
+    // const proxyURL = `http://192.168.3.107:${CLASH_HTTP_PROXY_PORT}`;  // 测试用 clash 代理
     // const proxyURL = `http://127.0.0.1:${8600}`;  // 测试用本服务代理
     const httpAgent = new HttpProxyAgent(proxyURL);
     const httpsAgent = new HttpsProxyAgent(proxyURL);
