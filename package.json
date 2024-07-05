@@ -11,6 +11,7 @@
     "build:forward_end": "cd forward_end && npm run build && npm i",
     "build": "npm run build:forward_end && npm run build:server",
     "start:server": "cd server && npm run start",
+    "start:clash": "cd server && npm run start:clash",
     "docker:build": "docker build --pull --rm -f \"Dockerfile\" -t hozeee/proxy_server:$npm_package_version \".\"",
     "docker:run": "export no_dot_version=$(echo $npm_package_version | sed 's/\\.//g') && docker run -d --name proxy_server_v$no_dot_version --network host --restart=always -p 8600:8600 -p 8601:8601 -p 8602:8602 -p 8690:8690 -p 8691:8691 hozeee/proxy_server:$npm_package_version"
   },
