@@ -59,6 +59,11 @@ function isRunningClash() {
   try {
     const pm2ListRes = execSync('pm2 list', { encoding: 'utf8' });
     if (pm2ListRes.includes(CLASH_RUN_FILENAME)) {
+      // "残留"忽略
+      const warningTxt = `[PM2][WARN] Current process list is not synchronized with saved list. App clash-linux-amd64-v1.18.0 differs. Type 'pm2 save' to synchronize.`;
+      if (pm2ListRes.includes(warningTxt)) {
+        return false;
+      }
       console.log('clash 已启动');
       return true;
     }
