@@ -15,4 +15,5 @@ run/
 typings/
 __*.controller.ts
 clash/*.yaml
+clash/*.log
 publish/forward_end/

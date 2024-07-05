@@ -10,6 +10,15 @@ import { CLASH_HTTP_PROXY_PORT, CLASH_SOCKS_PROXY_PORT } from '../config/port.co
 const CLASH_DIR = join(__dirname, '../../clash');
 const CLASH_CONFIG_FILENAME = 'clash_config.yaml';
 const CLASH_RUN_FILENAME = 'clash-linux-amd64-v1.18.0';
+const CLASH_LOG_FILENAME = 'clash.log';
+
+// 日志文件不存在需要创建
+const CLASH_LOG_FULL_FILENAME = join(CLASH_DIR, CLASH_LOG_FILENAME);
+if (!fs.existsSync(CLASH_LOG_FULL_FILENAME)) {
+  console.log(`日志文件(${CLASH_LOG_FULL_FILENAME}) 不存在，正在创建...`);
+  fs.createFileSync(CLASH_LOG_FULL_FILENAME);
+  console.log(`日志文件(${CLASH_LOG_FULL_FILENAME}) 创建成功`);
+}
 
 const clashControllerPort = 9090;
 const clashHttpProxyPort = CLASH_HTTP_PROXY_PORT;
@@ -85,7 +94,9 @@ export async function startClash() {
     const isRunning = isRunningClash();
     if (isRunning) return true;
     // 启动
-    execSync(`pm2 start ${join(CLASH_DIR, CLASH_RUN_FILENAME)} --name ${CLASH_RUN_FILENAME} -- -f ${join(CLASH_DIR, CLASH_CONFIG_FILENAME)}`);
+    const command = `pm2 start ${join(CLASH_DIR, CLASH_RUN_FILENAME)} --log ${CLASH_LOG_FULL_FILENAME} --name ${CLASH_RUN_FILENAME} -- -f ${join(CLASH_DIR, CLASH_CONFIG_FILENAME)}`;
+    console.log(`运行命令: ${command}`)
+    execSync(command);
     console.log('clash 启动成功');
     return isRunningClash();
   } catch (_) {
