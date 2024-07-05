@@ -55,7 +55,8 @@
     "lint:fix": "mwts fix",
     "ci": "npm run cov",
     "update:my_controller": "node create_my_controller.js",
-    "build": "npm run update:my_controller && mwtsc --cleanOutDir"
+    "build": "npm run update:my_controller && mwtsc --cleanOutDir",
+    "start:clash": "node ./dist/common/only_start_clash.js"
   },
   "repository": {
     "type": "git",

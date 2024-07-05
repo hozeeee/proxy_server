@@ -28,9 +28,7 @@ export class MainConfiguration implements ILifeCycle {
     const nativeWsService = await container.getAsync(NativeWsService);
     nativeWsService.startServer();
 
-
-
-    startClash();
+    // startClash();
 
     if (this.app.config.env === 'local') return; /******** 调试分割线(下面正式代码，本地调试不会执行) ********/
 
