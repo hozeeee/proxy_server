@@ -9,7 +9,7 @@ import type { Duplex } from 'stream';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { SocksClient } from 'socks';
 import { DEVICE_LIST } from '../common/device_config';
-import { CLASH_SOCKS_PROXY_PORT } from '../config/port.config';
+import { CLASH_SOCKS_PROXY_PORT } from '../config/port_config.json';
 
 
 /**

@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client';
-import { proxyServerPort } from '../config/port.config';
+import { proxyServerPort } from '../config/port_config.json';
 
 
 export function createConnectSocket() {

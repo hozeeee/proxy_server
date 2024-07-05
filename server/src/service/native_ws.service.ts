@@ -5,7 +5,7 @@ import http from 'http';
 import https from 'https';
 import net from 'net';
 import { URL } from 'url';
-import { nativeWsPort as port } from '../config/port.config';
+import { nativeWsPort as port } from '../config/port_config.json';
 import { ProxyHubService } from './proxy_hub.service';
 import { WebSocketServer } from 'ws';
 import { DEVICE_LIST } from '../common/device_config';

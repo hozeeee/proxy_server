@@ -9,7 +9,7 @@ import { io } from 'socket.io-client';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import type { Socket as SocketIoClient } from 'socket.io-client';
 import { createConnectSocket } from '../test_demo/socket_connect_to_here';
-import { CLASH_HTTP_PROXY_PORT } from '../config/port.config';
+import { CLASH_HTTP_PROXY_PORT } from '../config/port_config.json';
 
 
 

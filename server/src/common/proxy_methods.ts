@@ -3,7 +3,7 @@ import axios, { type AxiosInstance } from 'axios';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { DEVICE_LIST, type IDeviceId } from '../common/device_config';
-import { CLASH_HTTP_PROXY_PORT } from '../config/port.config';
+import { CLASH_HTTP_PROXY_PORT } from '../config/port_config.json';
 
 
 

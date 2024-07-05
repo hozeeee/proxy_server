@@ -4,7 +4,7 @@ import fs from 'fs-extra';
 import axios from 'axios';
 import { stringify } from 'query-string';
 import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
-import { CLASH_HTTP_PROXY_PORT, CLASH_SOCKS_PROXY_PORT } from '../config/port.config';
+import { CLASH_HTTP_PROXY_PORT, CLASH_SOCKS_PROXY_PORT } from '../config/port_config.json';
 
 
 const CLASH_DIR = join(__dirname, '../../clash');
