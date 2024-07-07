@@ -103,6 +103,16 @@ export async function startClash() {
     console.log(`运行命令: ${command}`)
     execSync(command);
     console.log('clash 启动成功');
+
+    // 切换节点
+    try {
+      const PROXY_NODE_NAME = 'B美国 02';
+      await switchClashProxy(PROXY_NODE_NAME);
+      console.log(`clash 节点切换成功: ${PROXY_NODE_NAME}`);
+    } catch (err: any) {
+      console.error(`clash 节点切换失败: ${err?.message || err}`);
+    }
+
     return isRunningClash();
   } catch (_) {
     return false;
