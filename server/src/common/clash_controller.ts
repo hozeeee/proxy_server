@@ -64,13 +64,10 @@ function isRunningClash() {
       if (pm2ListRes.includes(warningTxt)) {
         return false;
       }
-      console.log('clash 已启动');
       return true;
     }
-  } catch (err: any) {
-    console.log(`clash 启动失败: ${err?.message || err}`);
-    return false;
-  }
+  } catch (_) { }
+  return false;
 }
 
 /**
@@ -97,20 +94,38 @@ export async function startClash() {
 
     // 已经启动了
     const isRunning = isRunningClash();
-    if (isRunning) return true;
+    if (isRunning) {
+      console.log('clash 已启动');
+      return true;
+    }
     // 启动
     const command = `pm2 start ${join(CLASH_DIR, CLASH_RUN_FILENAME)} --log ${CLASH_LOG_FULL_FILENAME} --name ${CLASH_RUN_FILENAME} -- -f ${join(CLASH_DIR, CLASH_CONFIG_FILENAME)}`;
     console.log(`运行命令: ${command}`)
     execSync(command);
     console.log('clash 启动成功');
 
-    // 切换节点
-    try {
-      const PROXY_NODE_NAME = 'B美国 02';
-      await switchClashProxy(PROXY_NODE_NAME);
-      console.log(`clash 节点切换成功: ${PROXY_NODE_NAME}`);
-    } catch (err: any) {
-      console.error(`clash 节点切换失败: ${err?.message || err}`);
+    /**
+     * 切换节点。
+     * 需要重试几次，因为上面的命令执行完后未必服务马上生效。
+     *
+     * 踩坑记录:
+     * time="2024-07-05T14:10:30+08:00" level=warning msg="[TCP] dial 🔰国外流量 (match DomainKeyword/google) 127.0.0.1:40428 --> www.google.com:443 error: 127.0.0.1:443 connect error: dial tcp4 127.0.0.1:443: connect: connection refused"
+     * 上面是 clash 的运行日志，其中 "127.0.0.1:443" 说的是我们的请求被转发到本地的 443 端口上，其实就是命中了其中一条规则，就是转发到 443 导致。
+     * 切换节点即可。
+     */
+    let _count = 5;
+    const SWITCH_INTERVAL = 1 * 1000;
+    while (_count > 0) {
+      _count--;
+      try {
+        const PROXY_NODE_NAME = 'B美国 02';
+        await switchClashProxy(PROXY_NODE_NAME);
+        console.log(`clash 节点切换成功: ${PROXY_NODE_NAME}`);
+      } catch (err: any) {
+        // console.error(`clash 节点切换失败(${_count}): ${err?.message || err}`);
+        console.error(`clash 节点切换失败(${_count})`);
+        await new Promise((resolve) => setTimeout(resolve, SWITCH_INTERVAL));
+      }
     }
 
     return isRunningClash();
