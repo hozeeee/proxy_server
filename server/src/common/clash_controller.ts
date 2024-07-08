@@ -89,20 +89,20 @@ export async function startClash() {
   try {
     // 配置文件下载
     const exists = await isConfigFileExists();
-    if (!exists)
+    if (exists) console.log('clash 配置文件已存在');
+    else {
       await downloadConfig(process.env.CLASH_CONFIG_URL);
-
-    // 已经启动了
-    const isRunning = isRunningClash();
-    if (isRunning) {
-      console.log('clash 已启动');
-      return true;
     }
+
     // 启动
-    const command = `pm2 start ${join(CLASH_DIR, CLASH_RUN_FILENAME)} --log ${CLASH_LOG_FULL_FILENAME} --name ${CLASH_RUN_FILENAME} -- -f ${join(CLASH_DIR, CLASH_CONFIG_FILENAME)}`;
-    console.log(`运行命令: ${command}`)
-    execSync(command);
-    console.log('clash 启动成功');
+    const isRunning = isRunningClash();
+    if (isRunning) console.log('clash 已启动');
+    else {
+      const command = `pm2 start ${join(CLASH_DIR, CLASH_RUN_FILENAME)} --log ${CLASH_LOG_FULL_FILENAME} --name ${CLASH_RUN_FILENAME} -- -f ${join(CLASH_DIR, CLASH_CONFIG_FILENAME)}`;
+      console.log(`运行命令: ${command}`)
+      execSync(command);
+      console.log('clash 启动成功');
+    }
 
     /**
      * 切换节点。
@@ -114,7 +114,7 @@ export async function startClash() {
      * 切换节点即可。
      */
     let _count = 5;
-    const SWITCH_INTERVAL = 1 * 1000;
+    const SWITCH_INTERVAL = 2 * 1000;
     while (_count > 0) {
       _count--;
       try {
@@ -125,11 +125,9 @@ export async function startClash() {
           _count = -1;
           continue;
         }
-      } catch (err: any) {
-        // console.error(`clash 节点切换失败(${_count}): ${err?.message || err}`);
-        console.error(`clash 节点切换失败(${_count})`);
-        await new Promise((resolve) => setTimeout(resolve, SWITCH_INTERVAL));
-      }
+      } catch (err: any) { }
+      console.error(`clash 节点切换失败(${_count})`);
+      await new Promise((resolve) => setTimeout(resolve, SWITCH_INTERVAL));
     }
 
     return isRunningClash();
