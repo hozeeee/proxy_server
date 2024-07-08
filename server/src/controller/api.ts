@@ -34,7 +34,7 @@ export class APIController {
   async test2(): Promise<any> {
     // const res = await switchClashProxy('B美国 02');
     const res = await switchClashProxy('B美国 02', 'GLOBAL');
-    return res
+    return typeof res
   }
 
 

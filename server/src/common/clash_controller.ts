@@ -192,22 +192,12 @@ export async function switchClashProxy(name: string, group = '🔰国外流量')
   group = encodeURIComponent(group);
   const url = `http://127.0.0.1:${clashControllerPort}/proxies/${group}`;
 
-  // try {
-  //   const res = await axios<Record<string, any>>({ method: 'get', url: `http://127.0.0.1:${clashControllerPort}/proxies/${encodeURIComponent('B美国 02')}/delay?url=https://www.google.com&timeout=5000`, });
-  //   const json = res.data;
-  //   console.log('delay: ', json) // TODO:del
-  // } catch (_) {
-  //   console.log('delay-err: ', _) // TODO:del
-  // }
-
   try {
     const res = await axios.put<string>(url, { name });
-    const json = res.data;
-    console.log('switchClashProxy-success: ', typeof json, json) // TODO:del
-    return json;
+    // const json = res.data; // 是空的，响应码是 204
+    return true;
   } catch (_) {
-    // console.log('switchClashProxy-err: ', _) // TODO:del
-    return null;
+    return false;
   }
 }
 
