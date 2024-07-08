@@ -119,8 +119,12 @@ export async function startClash() {
       _count--;
       try {
         const PROXY_NODE_NAME = 'B美国 02';
-        await switchClashProxy(PROXY_NODE_NAME);
-        console.log(`clash 节点切换成功: ${PROXY_NODE_NAME}`);
+        const success = await switchClashProxy(PROXY_NODE_NAME);
+        if (success) {
+          console.log(`clash 节点切换成功: ${PROXY_NODE_NAME}`);
+          _count = -1;
+          continue;
+        }
       } catch (err: any) {
         // console.error(`clash 节点切换失败(${_count}): ${err?.message || err}`);
         console.error(`clash 节点切换失败(${_count})`);
@@ -190,14 +194,13 @@ export async function switchClashProxy(name: string, group = '🔰国外流量')
   group = encodeURIComponent(group);
   const url = `http://127.0.0.1:${clashControllerPort}/proxies/${group}`;
 
-
-  try {
-    const res = await axios<Record<string, any>>({ method: 'get', url: `http://127.0.0.1:${clashControllerPort}/proxies/${encodeURIComponent('B美国 02')}/delay?url=https://www.google.com&timeout=5000`, });
-    const json = res.data;
-    console.log('delay: ', json) // TODO:del
-  } catch (_) {
-    console.log('delay-err: ', _) // TODO:del
-  }
+  // try {
+  //   const res = await axios<Record<string, any>>({ method: 'get', url: `http://127.0.0.1:${clashControllerPort}/proxies/${encodeURIComponent('B美国 02')}/delay?url=https://www.google.com&timeout=5000`, });
+  //   const json = res.data;
+  //   console.log('delay: ', json) // TODO:del
+  // } catch (_) {
+  //   console.log('delay-err: ', _) // TODO:del
+  // }
 
   try {
     const res = await axios.put<string>(url, { name });
@@ -205,7 +208,7 @@ export async function switchClashProxy(name: string, group = '🔰国外流量')
     console.log('switchClashProxy-success: ', typeof json, json) // TODO:del
     return json;
   } catch (_) {
-    console.log('switchClashProxy-err: ', _) // TODO:del
+    // console.log('switchClashProxy-err: ', _) // TODO:del
     return null;
   }
 }
