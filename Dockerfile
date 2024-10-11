@@ -1,4 +1,4 @@
-FROM node:18.16.1-bullseye
+FROM node:20.17.0-bullseye
 # FROM node:latest
 ENV TZ="Asia/Shanghai"
 
