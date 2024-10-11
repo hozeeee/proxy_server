@@ -125,6 +125,20 @@ declare global {
     port: number;
   }
 
+
+
+  /**
+   * command_use 的相关类型。
+   */
+  type ISocketDataToCommandUse_Req = {
+    type: 'heartbeat';
+    sendAt: number;
+  }
+  type ISocketDataToCommandUse_Res = {
+    type: 'heartbeat_ack';
+    ackAt: number;
+  }
+
 }
 
 

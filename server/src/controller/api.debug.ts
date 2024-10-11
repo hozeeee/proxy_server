@@ -1,6 +1,5 @@
 import { Inject, Controller, Post, Query, Get } from '@midwayjs/core';
 import { Context } from '@midwayjs/web';
-import { UserService } from '../service/user';
 import { getClashInfo, switchClashProxy } from '../common/clash_controller';
 import axios from 'axios';
 import { HttpProxyAgent } from 'http-proxy-agent';
@@ -14,13 +13,11 @@ import { CLASH_HTTP_PROXY_PORT } from '../config/port_config.json';
 
 
 
-@Controller('/api')
-export class APIController {
+@Controller('/api/debug')
+export class APIDebugController {
   @Inject()
   ctx: Context;
 
-  @Inject()
-  userService: UserService;
 
   @Get('/test11')
   async test11(): Promise<any> {

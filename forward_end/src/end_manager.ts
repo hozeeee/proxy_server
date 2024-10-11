@@ -1,7 +1,8 @@
 import { io } from 'socket.io-client';
-import { HttpProxyController, } from './controller/http_proxy.controller';
-import { AxiosRequestController, } from './controller/axios_request.controller';
-import { TigervncForwardController, } from './controller/tigervnc_forward.controller';
+import { HttpProxyBridge, } from './controller/http_proxy.bridge';
+import { AxiosRequestBridge, } from './controller/axios_request.bridge';
+import { TigervncForwardBridge, } from './controller/tigervnc_forward.bridge';
+import { CommandUseBridge, } from './controller/command_use.bridge';
 
 
 const SOCKET_PATH = process.env.DEVICE_ID;
@@ -24,14 +25,17 @@ function start() {
     });
 
 
-    const httpController = new HttpProxyController();
+    const httpController = new HttpProxyBridge();
     httpController.useSocketIo(socket);
 
-    const axiosController = new AxiosRequestController();
+    const axiosController = new AxiosRequestBridge();
     axiosController.useSocketIo(socket);
 
-    const tigervncController = new TigervncForwardController();
+    const tigervncController = new TigervncForwardBridge();
     tigervncController.useSocketIo(socket);
+
+    const commandUseBridge = new CommandUseBridge();
+    commandUseBridge.useSocketIo(socket);
 
 }
 

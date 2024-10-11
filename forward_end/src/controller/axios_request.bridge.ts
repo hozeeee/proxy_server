@@ -20,8 +20,14 @@ type IRequestFn<T = any, D = any> = (config: AxiosRequestConfig<D>) => Promise<A
 type ISocketCallback = (socketResp: ISocketDataToAxios_Res) => void;
 
 
-export class AxiosRequestController {
-    static get socketEventName() { return SOCKET_EVENT_NAME; }
+export class AxiosRequestBridge {
+    /**
+     * 记录之前的 socket 和 on 回调。
+     * 当重复调用 useSocketIo 时，需要把旧的删除。
+     */
+    private _socket: Socket | undefined = undefined;
+    private _socketCallback: ((...args: any[]) => void) | undefined = undefined;
+
 
     /**
      * 发送 axios 配置到代理设备，
@@ -32,13 +38,6 @@ export class AxiosRequestController {
      */
     request: IRequestFn = () => Promise.reject('unset request function');
 
-
-    /**
-     * 记录之前的 socket 和 on 回调。
-     * 当重复调用 useSocketIo 时，需要把旧的删除。
-     */
-    private _socket: Socket | undefined = undefined;
-    private _socketCallback: ((...args: any[]) => void) | undefined = undefined;
 
     /**
      * 直接使用 socket.io 的实例注入方法。
@@ -74,6 +73,8 @@ export class AxiosRequestController {
                 });
             }
         }
+        socket.on(SOCKET_EVENT_NAME, socketCallback);
+
         this.request = (config) => {
             return new Promise((resolve) => {
                 try {
@@ -101,7 +102,6 @@ export class AxiosRequestController {
                 }
             });
         }
-        socket.on(SOCKET_EVENT_NAME, socketCallback);
 
         // 记录(用于清理)
         this._socket = socket;

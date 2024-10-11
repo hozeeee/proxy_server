@@ -1,6 +1,6 @@
 {
+  "serverPort": 8601,
   "proxyServerPort": 8600,
-  "webServerPort": 8601,
   "nativeWsPort": 8602,
   "CLASH_HTTP_PROXY_PORT": 8690,
   "CLASH_SOCKS_PROXY_PORT": 8691

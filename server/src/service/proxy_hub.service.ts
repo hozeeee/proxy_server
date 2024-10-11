@@ -8,13 +8,13 @@ import type { ServerResponse, IncomingMessage, RequestOptions, } from 'http';
 import type { Duplex } from 'stream';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { SocksClient } from 'socks';
-import { DEVICE_LIST } from '../common/device_config';
+import { DEVICE_LIST, type IDeviceId } from '../common/device_config';
 import { CLASH_SOCKS_PROXY_PORT } from '../config/port_config.json';
 
 
 /**
  * 说明:
- * 此服务的作用是用于将请求分发到不同的机器上。
+ *   此服务的作用是用于将请求分发到不同的机器上。
  */
 
 
@@ -24,15 +24,14 @@ export class ProxyHubService {
   socketApp: SocketApplication;
 
 
-  dispenseHttps(req: InstanceType<typeof IncomingMessage>, clientSocket: Duplex, head: Buffer) {
+  dispenseHttps(deviceId: IDeviceId, req: InstanceType<typeof IncomingMessage>, clientSocket: Duplex, head: Buffer) {
     const { port: _port, hostname } = new URL(`http://${req.url}`);
     const port = Number(_port || '443');
 
     /**
      * 服务器直接代理。
-     * TODO: 这里直接固定false，后面放开，也作为参考代码。
      */
-    const isUseLocal = false;
+    const isUseLocal = deviceId === 'server_local';
     if (isUseLocal) {
       const serverSocket = net.connect(port, hostname, () => {
         // 数据对接
@@ -52,9 +51,9 @@ export class ProxyHubService {
 
 
     /**
-     * 测试 clash 代理。
+     * 使用 clash 代理。
      */
-    const isUseClash = false;
+    const isUseClash = deviceId === 'clash';
     if (isUseClash) {
       SocksClient.createConnection({
         proxy: { host: '127.0.0.1', port: CLASH_SOCKS_PROXY_PORT, type: 5, /* SOCKS v5 */ },
@@ -80,16 +79,15 @@ export class ProxyHubService {
     }
 
     // 通过 socket 发送到代理端
-    const deviceId = 'local_test'; // TODO:debug
     const forwardHttpController = DEVICE_LIST.find(i => i.id === deviceId)?.forwardHttpController;
-    if (!forwardHttpController) return console.log('.....TODO:')
+    if (!forwardHttpController) return console.log('.....TODO:1')
     forwardHttpController.forwardHttpsReq({ req, socket: clientSocket, head });
   }
 
   /**
    * 调用此方法的必定是首次连接的。
    */
-  dispenseHttp(clientReq: IncomingMessage, clientRes: ServerResponse) {
+  dispenseHttp(deviceId: IDeviceId, clientReq: IncomingMessage, clientRes: ServerResponse) {
     const url = new URL(`http://${clientReq.url.replace('https://', '').replace('http://', '')}`);
     const options: RequestOptions = {
       method: clientReq.method,
@@ -98,9 +96,8 @@ export class ProxyHubService {
 
     /**
      * 服务器直接代理。
-     * TODO: 这里直接固定false，后面放开，也作为参考代码。
      */
-    const isUseLocal = false;
+    const isUseLocal = deviceId === 'local_test';
     if (isUseLocal) {
       const serverReq = http.request(url, options, (proxyRes) => {
         clientRes.writeHead(proxyRes.statusCode, proxyRes.headers);
@@ -142,9 +139,9 @@ export class ProxyHubService {
 
 
     /**
-     * 测试 clash 代理。
+     * 使用 clash 代理。
      */
-    const isUseClash = false;
+    const isUseClash = deviceId === 'clash';
     if (isUseClash) {
       const _options: RequestOptions = {
         ...options,
@@ -167,9 +164,8 @@ export class ProxyHubService {
 
 
     // 通过 socket 发送到代理端
-    const deviceId = 'local_test'; // TODO:debug
     const forwardHttpController = DEVICE_LIST.find(i => i.id === deviceId)?.forwardHttpController;
-    if (!forwardHttpController) return console.log('.....TODO:')
+    if (!forwardHttpController) return console.log('.....TODO:2')
     forwardHttpController.forwardHttpReq({ req: clientReq, res: clientRes });
 
   }

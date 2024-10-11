@@ -1,26 +1,41 @@
-import { defineConfig } from 'rollup';
+import { defineConfig, } from 'rollup';
 import resolve from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
+import fs from 'fs-extra';
+import { join } from 'path';
 
-export default defineConfig([
-  {
-    input: './src/index.ts',
-    output: {
-      file: 'dist/index.js',
-      format: 'cjs'
-    },
-    plugins: [],
-    external: ['./controller/http_proxy.controller', './controller/axios_request.controller', './controller/tigervnc_forward.controller'],
-    treeshake: true,
-  },
 
-  {
-    input: './src/end_manager.ts',
+const getDistFilename = (srcFilename = '') => srcFilename.replace('.ts', '.js').replace('./src', 'dist');
+
+
+export default () => {
+
+  const dir = join(__dirname, 'src/controller');
+  const bridgeFilenames = fs.readdirSync(dir);
+
+  /**
+   * index.ts 文件生成后再运行构建。
+   */
+  const indexJsExternal = bridgeFilenames.map(filename => `./controller/${filename}`.replace('.ts', ''));
+  const fileContent = `
+    /**
+     * 其他程序通过 SDK 的方式引入。
+     */
+    ${indexJsExternal.map(path => `export * from '${path}';`).join('\n')}
+  `;
+  const indexFilename = './src/index.ts';
+  fs.writeFileSync(join(__dirname, indexFilename), fileContent);
+
+  /**
+   * bridge 打包配置。
+   */
+  const bridgeConfigs = bridgeFilenames.map(filename => ({
+    input: `./src/controller/${filename}`,
     output: {
-      file: 'dist/end_manager.js',
-      format: 'cjs'
+      file: `dist/controller/${filename.replace('.ts', '.js')}`,
+      format: 'cjs',
     },
     plugins: [
       typescript(),
@@ -30,60 +45,47 @@ export default defineConfig([
     ],
     // external: ['wrtc', 'imap'],
     treeshake: true,
-  },
-  {
-    input: './src/controller/http_proxy.controller.ts',
-    output: {
-      file: 'dist/controller/http_proxy.controller.js',
-      format: 'cjs'
+  }));
+
+
+  return defineConfig([
+    {
+      input: indexFilename,
+      output: {
+        file: getDistFilename(indexFilename), // 'dist/index.js',
+        format: 'cjs'
+      },
+      plugins: [],
+      external: indexJsExternal,
+      treeshake: true,
     },
-    plugins: [
-      typescript(),
-      resolve(),
-      json(),
-      commonjs(),
-    ],
-    // external: ['wrtc', 'imap'],
-    treeshake: true,
-  },
-  {
-    input: './src/controller/axios_request.controller.ts',
-    output: {
-      file: 'dist/controller/axios_request.controller.js',
-      format: 'cjs'
+    ...bridgeConfigs,
+
+    {
+      input: './src/end_manager.ts',
+      output: {
+        file: 'dist/end_manager.js',
+        format: 'cjs'
+      },
+      plugins: [
+        typescript(),
+        resolve(),
+        json(),
+        commonjs(),
+      ],
+      // external: ['wrtc', 'imap'],
+      treeshake: true,
     },
-    plugins: [
-      typescript(),
-      resolve(),
-      json(),
-      commonjs(),
-    ],
-    // external: ['wrtc', 'imap'],
-    treeshake: true,
-  },
-  {
-    input: './src/controller/tigervnc_forward.controller.ts',
-    output: {
-      file: 'dist/controller/tigervnc_forward.controller.js',
-      format: 'cjs'
-    },
-    plugins: [
-      typescript(),
-      resolve(),
-      json(),
-      commonjs(),
-    ],
-    // external: ['wrtc', 'imap'],
-    treeshake: true,
-  },
-  {
-    input: 'on_build_end.ts',
-    output: {
-      file: 'dist/on_build_end.js',
-      format: 'cjs'
-    },
-    plugins: [
-      typescript(),
-    ],
-  }
-]);
+
+    {
+      input: 'on_build_end.ts',
+      output: {
+        file: 'dist/on_build_end.js',
+        format: 'cjs'
+      },
+      plugins: [
+        typescript(),
+      ],
+    }
+  ]);
+}

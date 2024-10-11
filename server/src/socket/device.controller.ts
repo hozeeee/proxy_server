@@ -6,6 +6,13 @@ import { DEVICE_LIST } from '../common/device_config';
 /* 勿删! 用于匹配头部生成新 controller 文件 */
 
 
+/**
+ * 说明:
+ *   1. 此文件会被 create_my_controller.js 读取，并通过正则解析，然后生成所有代理设备的路径接口。
+ *   2. 设备会通过同名路径，使用 socket.io 连接到此服务。
+ *   3. 使用 serverPort 接入到此服务。
+ */
+
 
 // 写正则就报错，其他由自制脚本生成 (create_my_controller.js)
 @WSController('/local_test')
@@ -43,6 +50,8 @@ export class ForwardEndDeviceSocketController {
     deviceConfig.forwardHttpController.useSocketIo(ws as any);
     deviceConfig.axiosRequestController.useSocketIo(ws as any);
     deviceConfig.tigervncForwardController.useSocketIo(ws as any);
+    deviceConfig.commandUseBridge.useSocketIo(ws as any);
+    deviceConfig.commandUseBridge.heartbeatInterval();
 
     // TODO: 后续扩展其他，例如: 远程控制，命令行转发，端口转发等。
   }

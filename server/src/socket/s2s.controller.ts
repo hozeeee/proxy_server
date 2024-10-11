@@ -2,25 +2,28 @@ import { WSController, OnWSConnection, Inject, OnWSMessage, OnWSDisConnection, A
 import { Context, Application as SocketApplication } from '@midwayjs/socketio';
 import { NoticeService } from '../service/notice.service';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { DEVICE_LIST, type IDeviceId } from '../common/device_config';
-import { proxyRequestAxios } from '../common/proxy_methods';
+import { type IDeviceId } from '../common/device_config';
+import { AxiosProxyEntranceService } from '../service/axios_proxy_entrance.service';
 
 
 /**
  * 说明，
- * 其他需要使用代理的服务或程序，可以通过此路径连接到此服务。
- * 通过制定的数据格式，在此服务发起请求，再拿到响应的数据。
+ *   1. 其他服务器与此服务对接，使用此路径。
+ *   2. 功能包括，设备列表的查询、设备上/下线的通知订阅。
+ *   3. 通过制定的数据格式，在此服务发起请求，再拿到响应的数据。
  */
 
 
-@WSController('/proxy_socket')
-export class ReqServerSocketController {
+@WSController('/s2s_socket')
+export class ServerToServerSocketController {
   @Inject()
   ctx: Context;
   @App('socketIO')
   socketApp: SocketApplication;
   @Inject()
   noticeService: NoticeService;
+  @Inject()
+  axiosProxyEntranceService: AxiosProxyEntranceService;
 
 
   @OnWSConnection()
@@ -50,9 +53,9 @@ export class ReqServerSocketController {
    * 示例:
    *   *.emit('request_axios', <device_id>, config);
    */
-  @OnWSMessage('request_axios')
+  @OnWSMessage('axios_request')
   async handleRequestAxios(deviceId: IDeviceId, config: AxiosRequestConfig) {
-    return await proxyRequestAxios(deviceId, config);
+    return await this.axiosProxyEntranceService.request(deviceId, config);
   }
 
 }

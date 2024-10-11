@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { MidwayConfig, MidwayAppInfo } from '@midwayjs/core';
-import { webServerPort as port } from './port_config.json';
+import { serverPort as port } from './port_config.json';
 
 export default (appInfo: MidwayAppInfo) => {
   return {

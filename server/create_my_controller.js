@@ -1,4 +1,4 @@
-// 本脚本会读取 ./src/socket/device.controller.ts 的信息，生成 _proxy.controller.ts 文件。
+// 本脚本会读取 ./src/socket/device.controller.ts 的信息，生成 __device.controller.ts 文件。
 
 const fs = require('fs');
 
@@ -9,7 +9,7 @@ const baseFileContent = fs.readFileSync(`${srcDir}/${srcFile}`).toString();
 
 // 匹配设备列表的配置
 const deviceListFile = fs.readFileSync('src/common/device_config.ts').toString();
-const deviceListReg = /export const DEVICE_LIST: IDeviceItem<IDeviceId>\[\] = (\[)([\s\S]+?)(\]);/gm;
+const deviceListReg = /export const DEVICE_LIST.?* = (\[)([\s\S]+?)(\]);/gm;
 const dlMatchRes = Array.from(deviceListFile.matchAll(deviceListReg));
 const deviceList = eval(dlMatchRes[0][1] + dlMatchRes[0][2] + dlMatchRes[0][3]);
 

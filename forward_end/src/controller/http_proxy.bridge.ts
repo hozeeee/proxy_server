@@ -37,11 +37,14 @@ type IOptions = {
  * 用来接管 socket 的数据。
  * 无论是服务端还是代理端，都只有一个实例，用于对接 socket 即可。
  */
-export class HttpProxyController {
+export class HttpProxyBridge {
+    /**
+     * 记录之前的 socket 和 on 回调。
+     * 当重复调用 useSocketIo 时，需要把旧的删除。
+     */
+    private _socket: Socket | undefined = undefined;
+    private _socketCallback: ((...args: any[]) => void) | undefined = undefined;
 
-    static get socketEventName() {
-        return SOCKET_EVENT_NAME;
-    }
 
     /**
      * 用于接管 socket.emit('__forward_end_data', ...)
@@ -85,28 +88,21 @@ export class HttpProxyController {
     };
 
     /**
-     * 记录之前的 socket 和 on 回调。
-     * 当重复调用 useSocketIo 时，需要把旧的删除。
-     */
-    private oldSocket: Socket | undefined = undefined;
-    private oldSocketCallback: ((...args: any[]) => void) | undefined = undefined;
-
-    /**
      * 直接使用 socket.io 的实例注入方法。
      */
     useSocketIo(socket: Socket) {
         // 清空旧的回调
         try {
-            if (this.oldSocket && this.oldSocketCallback) {
-                this.oldSocket.off(SOCKET_EVENT_NAME, this.oldSocketCallback);
-                this.oldSocket = undefined;
-                this.oldSocketCallback = undefined;
+            if (this._socket && this._socketCallback) {
+                this._socket.off(SOCKET_EVENT_NAME, this._socketCallback);
+                this._socket = undefined;
+                this._socketCallback = undefined;
             }
         } catch (_) { }
 
         // 记录
-        this.oldSocket = socket;
-        this.oldSocketCallback = (data) => {
+        this._socket = socket;
+        this._socketCallback = (data) => {
             this.receive(data);
         }
 
@@ -114,7 +110,7 @@ export class HttpProxyController {
         this.send = (data) => {
             socket.emit(SOCKET_EVENT_NAME, data);
         }
-        socket.on(SOCKET_EVENT_NAME, this.oldSocketCallback);
+        socket.on(SOCKET_EVENT_NAME, this._socketCallback);
     }
 
     constructor(options?: IOptions) {

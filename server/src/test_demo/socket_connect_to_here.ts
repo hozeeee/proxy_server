@@ -1,10 +1,10 @@
 import { io } from 'socket.io-client';
-import { proxyServerPort } from '../config/port_config.json';
+import { serverPort } from '../config/port_config.json';
 
 
 export function createConnectSocket() {
 
-  const socket = io(`ws://127.0.0.1:${proxyServerPort}/proxy`);
+  const socket = io(`ws://127.0.0.1:${serverPort}/proxy`);
 
   socket.on('connect', () => {
     console.log('connect')

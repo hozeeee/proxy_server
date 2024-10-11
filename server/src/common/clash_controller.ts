@@ -55,7 +55,7 @@ export function downloadConfig(url: string) {
 /**
  * 判断是否已经运行了 clash 服务。
  */
-function isRunningClash() {
+export function isRunningClash() {
   try {
     const pm2ListRes = execSync('pm2 list', { encoding: 'utf8' });
     if (pm2ListRes.includes(CLASH_RUN_FILENAME)) {

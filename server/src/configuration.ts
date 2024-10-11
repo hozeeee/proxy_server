@@ -2,7 +2,7 @@ import { App, Configuration, ILifeCycle, IMidwayContainer } from '@midwayjs/core
 import { join } from 'path';
 import * as egg from '@midwayjs/web';
 import * as staticFile from '@midwayjs/static-file';
-import { ProxyEntranceService } from './service/proxy_entrance.service';
+import { HttpProxyEntranceService } from './service/http_proxy_entrance.service';
 import { NativeWsService } from './service/native_ws.service';
 import * as socketio from '@midwayjs/socketio';
 import { downloadConfig, startClash } from './common/clash_controller';
@@ -22,15 +22,15 @@ export class MainConfiguration implements ILifeCycle {
 
 
   async onServerReady(container: IMidwayContainer) {
-    const proxyEntranceService = await container.getAsync(ProxyEntranceService);
-    proxyEntranceService.startServer();
+    const proxyEntranceService = await container.getAsync(HttpProxyEntranceService);
+    proxyEntranceService.startServers();
 
     const nativeWsService = await container.getAsync(NativeWsService);
     nativeWsService.startServer();
 
-    startClash();
 
     if (this.app.config.env === 'local') return; /******** 调试分割线(下面正式代码，本地调试不会执行) ********/
 
+    startClash();
   }
 }

@@ -70,16 +70,15 @@ type ISocketCallback = (socketResp: ISocketDataToTigervncServer) => void;
  * 用来接管 socket 的数据。
  * 无论是服务端还是代理端，都只有一个实例，用于对接 socket 即可。
  */
-export class TigervncForwardController {
-  static get socketEventName() { return SOCKET_EVENT_NAME; }
-
-
+export class TigervncForwardBridge {
   /**
    * 记录之前的 socket 和 on 回调。
    * 当重复调用 useSocketIo 时，需要把旧的删除。
    */
   private serverToEndSocket: ISocketClient | undefined = undefined;
   private serverToEndSocketListener: ((...args: any[]) => void) | undefined = undefined;
+
+
 
   /**
    * 直接使用 socket.io 的实例注入方法。
