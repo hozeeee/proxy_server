@@ -33,6 +33,7 @@ export type IDeviceId =
  *   1. 下面的第一行别动，因为 create_my_controller.js 会通过正则读取到这里的代码内容。
  *   2. 下面的配置也不能有"计算"的逻辑。
  *   3. 端口的改动需要谨慎，参考 port_config.json ，默认的规则是从 **10 开始。
+ *   4. 第一个必须是调试设备，以它为模版，在 server/src/socket/device.controller.ts 的配置必须是它。
  */
 export const DEVICE_LIST: IDeviceItem<IDeviceId>[] = [
   { id: 'local_test', name: '本地测试', port: 8610, },

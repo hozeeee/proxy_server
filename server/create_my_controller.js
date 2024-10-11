@@ -9,7 +9,7 @@ const baseFileContent = fs.readFileSync(`${srcDir}/${srcFile}`).toString();
 
 // 匹配设备列表的配置
 const deviceListFile = fs.readFileSync('src/common/device_config.ts').toString();
-const deviceListReg = /export const DEVICE_LIST.?* = (\[)([\s\S]+?)(\]);/gm;
+const deviceListReg = /export const DEVICE_LIST.*? = (\[)([\s\S]+?)(\]);/gm;
 const dlMatchRes = Array.from(deviceListFile.matchAll(deviceListReg));
 const deviceList = eval(dlMatchRes[0][1] + dlMatchRes[0][2] + dlMatchRes[0][3]);
 
@@ -30,7 +30,7 @@ res += headerTxt;
 res += '\n'
 for (let idx = 1, len = deviceList.length; idx < len; idx++) {
   const device = deviceList[idx];
-  res += controllerTxt.replace(devDeviceId, device.id).replace('ForwardEndDeviceSocketController', `ForwardEndDeviceSocketController${idx}`) + '\n';
+  res += controllerTxt.replaceAll(devDeviceId, device.id).replace('ForwardEndDeviceSocketController', `ForwardEndDeviceSocketController${idx}`) + '\n';
 }
 
 fs.writeFileSync(`${srcDir}/__${srcFile}`, res, { flag: 'w' });
