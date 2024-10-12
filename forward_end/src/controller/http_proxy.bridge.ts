@@ -7,6 +7,9 @@ import type { Readable, Stream } from 'stream';
 import { nanoid as uuidCreator } from 'nanoid/non-secure';
 import type { Socket } from 'socket.io-client';
 import type { Duplex } from 'stream';
+import { Logger } from '../utils/logger';
+
+const logger = new Logger('[http_proxy.bridge]');
 
 
 
@@ -84,7 +87,7 @@ export class HttpProxyBridge {
                     return;
                 }
             }
-        } catch (_) { }
+        } catch (err) { logger.debug(`receive-err: ${err}`); }
     };
 
     /**
@@ -187,7 +190,7 @@ export class HttpProxyBridge {
                 const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
                 this.send(data);
             });
-        } catch (_) { }
+        } catch (err) { logger.debug(`forwardHttpReq-err: ${err}`); }
     }
     /**
      * 第三步，
@@ -205,20 +208,22 @@ export class HttpProxyBridge {
             option.timeout = 10 * 1000;
 
             const proxyReq = http.request(url, option, (proxyRes) => {
-                // 发送自定义事件
-                this.send({ type: 'writeHead', uuid, data: [proxyRes.statusCode!, proxyRes.headers], });
-                /**
-                 * 将特定事件发送到代理端。
-                 * 实测的坑: 不能把所有通过 for 循环注入所有事件。理由上面写了。
-                 */
-                proxyRes.on('data', (buf: Buffer) => {
-                    const data: ISocketData = { type: 'event', uuid, event: 'data', args: [buf] as any };
-                    this.send(data);
-                });
-                proxyRes.on('end', () => {
-                    const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
-                    this.send(data);
-                });
+                try {
+                    // 发送自定义事件
+                    this.send({ type: 'writeHead', uuid, data: [proxyRes.statusCode!, proxyRes.headers], });
+                    /**
+                     * 将特定事件发送到代理端。
+                     * 实测的坑: 不能把所有通过 for 循环注入所有事件。理由上面写了。
+                     */
+                    proxyRes.on('data', (buf: Buffer) => {
+                        const data: ISocketData = { type: 'event', uuid, event: 'data', args: [buf] as any };
+                        this.send(data);
+                    });
+                    proxyRes.on('end', () => {
+                        const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
+                        this.send(data);
+                    });
+                } catch (err) { logger.debug(`createHttpReq-http.request-err: ${err}`); }
             });
 
             proxyReq.on('error', (err) => {
@@ -229,7 +234,7 @@ export class HttpProxyBridge {
             });
 
             this.cacheMap.set(uuid, { type: 'end', target: proxyReq });
-        } catch (_) { }
+        } catch (err) { logger.debug(`createHttpReq-err: ${err}`); }
     }
 
 
@@ -270,7 +275,7 @@ export class HttpProxyBridge {
                 const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
                 this.send(data);
             });
-        } catch (_) { }
+        } catch (err) { logger.debug(`forwardHttpsReq-err: ${err}`); }
     }
     /**
      * 第三步，
@@ -282,34 +287,36 @@ export class HttpProxyBridge {
             if (_data.type !== 'connect' || _data.protocol !== 'https') return;
             const { uuid, head, port, hostname, httpVersion, headers } = _data;
             const pointSocket = net.connect(port, hostname, () => {
-                /**
-                 * 通知服务端给客户端写入头部。
-                 */
-                const resHead = `HTTP/${httpVersion} 200 Connection Established\r\n` +
-                    // 'Proxy-agent: Node.js-Proxy\r\n' +
-                    '\r\n';
-                const _data: ISocketData = { type: 'event', uuid, event: 'data', args: [resHead] as any };
-                this.send(_data);
-                /**
-                 * 写入来自客户端的头部 buffer 内容。
-                 */
-                pointSocket.write(head);
-                /**
-                 * 将特定事件发送到代理端。
-                 * 实测的坑: 不能把所有通过 for 循环注入所有事件。理由上面写了。
-                 */
-                pointSocket.on('data', (buf: Buffer) => {
-                    const data: ISocketData = { type: 'event', uuid, event: 'data', args: [buf] as any };
-                    this.send(data);
-                });
-                pointSocket.on('end', () => {
-                    const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
-                    this.send(data);
-                });
+                try {
+                    /**
+                     * 通知服务端给客户端写入头部。
+                     */
+                    const resHead = `HTTP/${httpVersion} 200 Connection Established\r\n` +
+                        // 'Proxy-agent: Node.js-Proxy\r\n' +
+                        '\r\n';
+                    const _data: ISocketData = { type: 'event', uuid, event: 'data', args: [resHead] as any };
+                    this.send(_data);
+                    /**
+                     * 写入来自客户端的头部 buffer 内容。
+                     */
+                    pointSocket.write(head);
+                    /**
+                     * 将特定事件发送到代理端。
+                     * 实测的坑: 不能把所有通过 for 循环注入所有事件。理由上面写了。
+                     */
+                    pointSocket.on('data', (buf: Buffer) => {
+                        const data: ISocketData = { type: 'event', uuid, event: 'data', args: [buf] as any };
+                        this.send(data);
+                    });
+                    pointSocket.on('end', () => {
+                        const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
+                        this.send(data);
+                    });
+                } catch (err) { logger.debug(`createHttpsReq-net.connect-err: ${err}`); }
             });
 
             this.cacheMap.set(uuid, { type: 'end', target: pointSocket });
-        } catch (_) { }
+        } catch (err) { logger.debug(`createHttpsReq-err: ${err}`); }
     }
 
 }
