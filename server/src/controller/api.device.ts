@@ -1,7 +1,7 @@
 import { Inject, Controller, Post, Query, Get } from '@midwayjs/core';
 import { Context } from '@midwayjs/web';
 import { DeviceManageService } from '../service/device_manage.service';
-import { type IDeviceId, DEVICE_LIST } from '../common/device_config';
+import { type IDeviceId, } from '../common/device_config';
 
 
 
