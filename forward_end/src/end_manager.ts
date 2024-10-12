@@ -40,5 +40,4 @@ function start() {
 }
 
 
-// TODO:debug
 start()

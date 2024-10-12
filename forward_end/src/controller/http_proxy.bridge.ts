@@ -35,6 +35,7 @@ type IListener = (data: ISocketData) => void;
 type IOptions = {
     send?: IListener;
 }
+type ISocketCallback = ((...args: any[]) => void) | undefined;
 
 /**
  * 用来接管 socket 的数据。
@@ -46,7 +47,7 @@ export class HttpProxyBridge {
      * 当重复调用 useSocketIo 时，需要把旧的删除。
      */
     private _socket: Socket | undefined = undefined;
-    private _socketCallback: ((...args: any[]) => void) | undefined = undefined;
+    private _socketCallback: ISocketCallback = undefined;
 
 
     /**
@@ -94,7 +95,9 @@ export class HttpProxyBridge {
      * 直接使用 socket.io 的实例注入方法。
      */
     useSocketIo(socket: Socket) {
-        // 清空旧的回调
+        /**
+         * 清空旧的回调。
+         */
         try {
             if (this._socket && this._socketCallback) {
                 this._socket.off(SOCKET_EVENT_NAME, this._socketCallback);
@@ -103,17 +106,29 @@ export class HttpProxyBridge {
             }
         } catch (_) { }
 
-        // 记录
-        this._socket = socket;
-        this._socketCallback = (data) => {
+        /**
+         * 配置"响应回调"。
+         * 通常是在终端接收到指令后触发。
+         */
+        const socketCallback: ISocketCallback = (data) => {
             this.receive(data);
         }
-
-        // 配置
+        socket.on(SOCKET_EVENT_NAME, socketCallback);
+        /**
+         * 创建"主动调用"的方法。
+         * 通常是在服务端调用。
+         */
         this.send = (data) => {
-            socket.emit(SOCKET_EVENT_NAME, data);
+            try {
+                this._socket!.emit(SOCKET_EVENT_NAME, data);
+            } catch (err) { logger.debug(`send-err: ${err}`); }
         }
-        socket.on(SOCKET_EVENT_NAME, this._socketCallback);
+
+        /**
+         * 记录(用于清理旧数据)
+         */
+        this._socket = socket;
+        this._socketCallback = socketCallback;
     }
 
     constructor(options?: IOptions) {
@@ -284,10 +299,19 @@ export class HttpProxyBridge {
      */
     private createHttpsReq(_data: ISocketData) {
         try {
+            logger.debug(`before createHttpsReq: _data.protocol(${_data.type})`);
             if (_data.type !== 'connect' || _data.protocol !== 'https') return;
             const { uuid, head, port, hostname, httpVersion, headers } = _data;
             const pointSocket = net.connect(port, hostname, () => {
                 try {
+                    logger.debug(`pointSocket.readyState: ${pointSocket.readyState}`);
+                    /**
+                     * 踩坑记录:
+                     *   对于 readyState 的 socket ，它是无法调用 write 方法，
+                     *   否则会导致报错，错误也无法被外层的 try-catch 捕捉，导致整个程序崩溃。
+                     */
+                    if (pointSocket.readyState === 'readOnly') return;
+
                     /**
                      * 通知服务端给客户端写入头部。
                      */
@@ -313,6 +337,17 @@ export class HttpProxyBridge {
                         this.send(data);
                     });
                 } catch (err) { logger.debug(`createHttpsReq-net.connect-err: ${err}`); }
+            });
+            /**
+             * 踩坑记录:
+             *   error 事件的监听需要在外层(也就是这里)，否则内部不能捕捉到 ETIMEDOUT 的错误。
+             *   无法通过监听 timeout 事件来捕获 ETIMEDOUT 的报错，应该不是同一个东西。
+             *   pointSocket 的报错无法通过 try-catch 来捕获(也就是上面的 try-catch)，它的错误会直接给到最外层，导致程序崩溃。
+             */
+            pointSocket.on('error', (err) => {
+                const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
+                this.send(data);
+                logger.debug(`pointSocket-err: ${err}`);
             });
 
             this.cacheMap.set(uuid, { type: 'end', target: pointSocket });

@@ -1,4 +1,4 @@
-import { App, Provide } from '@midwayjs/core';
+import { App, Inject, Provide } from '@midwayjs/core';
 import { Application as SocketApplication } from '@midwayjs/socketio';
 import http from 'http';
 import https from 'https';
@@ -10,6 +10,7 @@ import { SocksProxyAgent } from 'socks-proxy-agent';
 import { SocksClient } from 'socks';
 import { DEVICE_LIST, type IDeviceId } from '../common/device_config';
 import { CLASH_SOCKS_PROXY_PORT } from '../config/port_config.json';
+import { DeviceManageService } from './device_manage.service';
 
 
 /**
@@ -22,6 +23,8 @@ import { CLASH_SOCKS_PROXY_PORT } from '../config/port_config.json';
 export class ProxyHubService {
   @App('socketIO')
   socketApp: SocketApplication;
+  @Inject()
+  deviceManageService: DeviceManageService;
 
 
   dispenseHttps(deviceId: IDeviceId, req: InstanceType<typeof IncomingMessage>, clientSocket: Duplex, head: Buffer) {
@@ -80,8 +83,9 @@ export class ProxyHubService {
 
     // 通过 socket 发送到代理端
     const forwardHttpController = DEVICE_LIST.find(i => i.id === deviceId)?.forwardHttpController;
-    if (!forwardHttpController) return console.log('.....TODO:1')
-    forwardHttpController.forwardHttpsReq({ req, socket: clientSocket, head });
+    const usable = !!this.deviceManageService.checkDeviceUsable(deviceId);
+    if (!usable) return;
+    forwardHttpController?.forwardHttpsReq({ req, socket: clientSocket, head });
   }
 
   /**

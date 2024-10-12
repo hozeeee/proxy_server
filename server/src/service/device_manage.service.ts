@@ -56,7 +56,7 @@ export class DeviceManageService {
   /**
    * 查询单个设备是否可用。
    */
-  private checkDeviceUsable(deviceId: IDeviceId) {
+  checkDeviceUsable(deviceId: IDeviceId) {
     if (deviceId === 'server_local') return true;
     if (deviceId === 'clash') return isRunningClash();
     const config = DEVICE_LIST.find(i => i.id === deviceId);

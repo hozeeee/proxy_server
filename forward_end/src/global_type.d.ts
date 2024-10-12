@@ -129,14 +129,17 @@ declare global {
 
   /**
    * command_use 的相关类型。
+   * 注意:
+   *   1. "心跳发送方"才能计算延迟(ping)。
+   *   2. 第二次之后的心跳都会把延迟值发送给"心跳响应方"，这是因为"心跳响应方"没办法算出延迟值。
+   *   3. 心跳都可以互相发送，但一般一方发送即可。
    */
   type ISocketDataToCommandUse_Req = {
     type: 'heartbeat';
-    sendAt: number;
+    ping: number;
   }
   type ISocketDataToCommandUse_Res = {
     type: 'heartbeat_ack';
-    ackAt: number;
   }
 
 }
