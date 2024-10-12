@@ -12,8 +12,9 @@
     "build": "npm run build:forward_end && npm run build:server",
     "start:server": "cd server && npm run start",
     "start:clash": "cd server && npm run start:clash",
-    "docker:build": "__COMMAND_TYPE=build node ./docker_command.js",
+    "docker:build": "__COMMAND_TYPE=build LOCAL_DOCKER_REGISTRY=127.0.0.1:5000 node ./docker_command.js",
     "docker:run": "__COMMAND_TYPE=run node ./docker_command.js",
+    "docker:print-build": "__COMMAND_TYPE=print-build LOCAL_DOCKER_REGISTRY=127.0.0.1:5000 node ./docker_command.js",
     "docker:print-run": "__COMMAND_TYPE=print-run node ./docker_command.js"
   },
   "keywords": [],

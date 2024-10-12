@@ -39,17 +39,34 @@ const runCommand = `docker run -d --name proxy_server_v${noDotVersion} --restart
 const type = process.env.__COMMAND_TYPE;
 switch (type) {
   case 'build': {
+    console.log(`[执行命令] ${buildCommand}`);
     const res1 = execSync(buildCommand, { encoding: 'utf8' });
+    // console.log(res1);
+
+    console.log(`[执行命令] ${tagCommand}`);
     const res2 = execSync(tagCommand, { encoding: 'utf8' });
+    console.log(res2);
+
+    console.log(`[执行命令] ${pushCommand}`);
     const res3 = execSync(pushCommand, { encoding: 'utf8' });
+    console.log(res3);
     break;
   }
+
   case 'run': {
+    console.log(`[执行命令] ${pullCommand}`);
     const res1 = execSync(pullCommand, { encoding: 'utf8' });
+
+    console.log(`[执行命令] ${runCommand}`);
     const res2 = execSync(runCommand, { encoding: 'utf8' });
     break;
   }
+
   // 打印运行命令，方便拷贝到"部署主机"上执行
+  case 'print-build': {
+    console.log(`${buildCommand} && ${tagCommand} && ${pushCommand}`);
+    break;
+  }
   case 'print-run': {
     console.log(`${pullCommand} && ${runCommand}`);
     break;
