@@ -1,7 +1,12 @@
 import axios from 'axios';
+import { Agent } from 'https';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import type { Socket } from 'socket.io-client';
 
+
+const defaultHttpsAgent = new Agent({
+    rejectUnauthorized: false, // 这里设置为 false 来忽略 SSL 错误
+});
 
 
 /**
@@ -43,7 +48,9 @@ export class AxiosRequestBridge {
      * 直接使用 socket.io 的实例注入方法。
      */
     useSocketIo(socket: Socket) {
-        // 清空旧的回调
+        /**
+         * 清空旧的回调。
+         */
         try {
             if (this._socket && this._socketCallback) {
                 this._socket.off(SOCKET_EVENT_NAME, this._socketCallback);
@@ -51,7 +58,11 @@ export class AxiosRequestBridge {
                 this._socketCallback = undefined;
             }
         } catch (_) { }
-        // 配置
+
+        /**
+         * 配置"响应回调"。
+         * 通常是在终端接收到指令后触发。
+         */
         const socketCallback = async (rawData: ISocketDataToAxios_Req, callback: ISocketCallback) => {
             try {
                 const { type, config } = rawData;
@@ -69,41 +80,37 @@ export class AxiosRequestBridge {
                     type: 'response',
                     data: null,
                     success: false,
-                    message: `axios.request 执行异常: ${err?.message || err}`,
+                    message: `${err}`,
                 });
             }
         }
         socket.on(SOCKET_EVENT_NAME, socketCallback);
-
+        /**
+         * 创建"主动调用"的方法。
+         * 通常是在服务端调用。
+         */
         this.request = (config) => {
-            return new Promise((resolve) => {
-                try {
-                    // 避免 axios 的 timeout 参数不生效，这里补一个处理(增加 500ms)
-                    if (config.timeout && typeof config.timeout === 'number') setTimeout(resolve.bind(undefined, '请求超时(axios 没触发，手动设置的代码)'), config.timeout + 500);
+            return new Promise((resolve, reject) => {
+                // 避免 axios 的 timeout 参数不生效，这里补一个处理(增加 500ms)
+                if (config.timeout && typeof config.timeout === 'number') setTimeout(resolve.bind(undefined, '请求超时(axios 没触发，手动设置的代码)'), config.timeout + 500);
 
-                    const respListener: ISocketCallback = (socketResp) => {
-                        const { type, data, success, message } = socketResp || {};
-                        // 通常不会执行到这
-                        if (type !== 'response') {
-                            resolve(null);
-                            return;
-                        }
-                        if (success) resolve(data);
-                        else resolve(message);
-                    }
-                    const data: ISocketDataToAxios_Req = {
-                        type: 'request',
-                        config,
-                    }
-                    socket.emit(SOCKET_EVENT_NAME, data, respListener);
-
-                } catch (err: any) {
-                    resolve(`${err?.message ?? err}`);
+                const respListener: ISocketCallback = (socketResp) => {
+                    const { type, data, success, message } = socketResp || {};
+                    if (type !== 'response') reject(`非预期错误`); // 通常不会执行到这
+                    else if (success) resolve(data);
+                    else reject(message);
                 }
+                const data: ISocketDataToAxios_Req = {
+                    type: 'request',
+                    config,
+                }
+                this._socket!.emit(SOCKET_EVENT_NAME, data, respListener);
             });
         }
 
-        // 记录(用于清理)
+        /**
+         * 记录(用于清理旧数据)
+         */
         this._socket = socket;
         this._socketCallback = socketCallback;
     }

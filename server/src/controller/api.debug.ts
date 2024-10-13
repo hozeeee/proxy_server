@@ -9,6 +9,7 @@ import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import type { Socket as SocketIoClient } from 'socket.io-client';
 import { createConnectSocket } from '../test_demo/socket_connect_to_here';
 import { CLASH_HTTP_PROXY_PORT } from '../config/port_config.json';
+import { DEVICE_LIST } from '../common/device_config';
 
 
 
@@ -66,6 +67,30 @@ export class APIDebugController {
     if (res) delete res.request;
     return res || 'err';
   }
+
+
+
+  /**
+   * 测试使用远端设备的 axios 发起请求，
+   */
+  @Get('/test/device_axios_req')
+  async testDeviceAxiosReq(): Promise<any> {
+    const device = DEVICE_LIST.find(I => I.id === 'local_test');
+    if (!device) return 'null';
+    const config = {
+      method: 'GET',
+      // url: 'https://4.ipw.cn',
+      url: 'https://www.baidu.com',
+    }
+    const res = await device.axiosRequestController.request(config);
+    const res2 = await axios.request(config);
+    delete res2.request;
+    return {
+      deviceRes: res,
+      normalRes: res2,
+    };
+  }
+
 
   /**
    * 测试查询 clash 的信息。

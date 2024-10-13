@@ -26,7 +26,6 @@ const SOCKET_EVENT_NAME = '__forward_end_data';
 
 
 /**
- * TODO: 超时情况未考虑。
  * 服务端超时、代理端超时 都需要考虑。
  */
 
