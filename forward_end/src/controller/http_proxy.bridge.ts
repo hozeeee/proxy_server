@@ -74,10 +74,12 @@ export class HttpProxyBridge {
                 (target as ServerResponse).writeHead(data[0], data[1]);
                 return;
             }
-            // 两段都一样，数据交换
+            // 两端都一样，数据交换
             if (dataType === 'event') {
                 const { event, args } = _data as ISocketData_ServerEvent<'data'>;
                 if (event === 'data') {
+                    if ((target as net.Socket).readyState === 'readOnly') return;
+                    console.log('readyState: ', (target as net.Socket).readyState)
                     target.write(args[0]);
                     return;
                 }
