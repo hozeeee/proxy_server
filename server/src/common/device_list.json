@@ -1,4 +1,9 @@
 [
-  { "id": "local_test", "name": "本地测试", "port": 8610 },
-  { "id": "n2840", "name": "村工控机", "port": 8611 }
+  { "id": "local_test", "name": "测试专用", "port": 8610 },
+  { "id": "n2840", "name": "村工控机", "port": 8611 },
+  { "id": "samsung_s8", "name": "三星手机s8", "port": 8612 },
+  { "id": "samsung_note20", "name": "三星手机note20", "port": 8613 },
+  { "id": "j1800_th", "name": "同和工控机", "port": 8614 },
+  { "id": "j1800_xinyi", "name": "信宜工控机", "port": 8615 },
+  { "id": "j1800_my", "name": "我的工控机", "port": 8616 }
 ]
