@@ -101,7 +101,7 @@ export class ProxyHubService {
     /**
      * 服务器直接代理。
      */
-    const isUseLocal = deviceId === 'local_test';
+    const isUseLocal = deviceId === 'server_local';
     if (isUseLocal) {
       const serverReq = http.request(url, options, (proxyRes) => {
         clientRes.writeHead(proxyRes.statusCode, proxyRes.headers);

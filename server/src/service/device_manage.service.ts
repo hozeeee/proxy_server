@@ -29,10 +29,10 @@ export class DeviceManageService {
       pingUpdateAt: item.commandUseBridge?.latestHeartbeatAt ?? 0,
       port: item.port,
     }));
-    for (const item of list) {
-      const { id } = item;
-      //
-    }
+    // for (const item of list) {
+    //   const { id } = item;
+    //   //
+    // }
     // 不在配置项的，手动加上
     list.unshift({
       id: 'server_local',
@@ -41,7 +41,8 @@ export class DeviceManageService {
       port: proxyServerPort,
       ping: 0,
       pingUpdateAt: 0,
-    }, {
+    });
+    list.push({
       id: 'clash',
       name: 'clash 代理',
       usable: this.checkDeviceUsable('clash'),

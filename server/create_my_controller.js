@@ -14,7 +14,7 @@ const ctMatchRes = Array.from(baseFileContent.matchAll(controllerReg));
 const controllerTxt = ctMatchRes[0][0];
 
 // 文件头部依赖
-const headerReg = /([\s\S]+)\/\* 勿删! 用于匹配头部生成新 controller 文件 \*\//gm;
+const headerReg = /([\s\S]+)\/\* 勿删! 勿改! 用于匹配头部生成新 controller 文件。上面内容都会被作用于新文件。 \*\//gm;
 const hMatchRes = Array.from(baseFileContent.matchAll(headerReg));
 const headerTxt = hMatchRes[0][1];
 

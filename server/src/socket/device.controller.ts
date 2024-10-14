@@ -3,7 +3,7 @@ import { Context, Application as SocketApplication } from '@midwayjs/socketio';
 import { NoticeService } from '../service/notice.service';
 import type { IDeviceId } from '../common/device_config';
 import { DEVICE_LIST } from '../common/device_config';
-/* 勿删! 用于匹配头部生成新 controller 文件 */
+/* 勿删! 勿改! 用于匹配头部生成新 controller 文件。上面内容都会被作用于新文件。 */
 
 
 /**
