@@ -15,6 +15,10 @@ const HOSTNAME = process.env.HOSTNAME || '192.168.3.101';
  * 可以作为参考。
  * 
  * 在 stream 内添加 " include /etc/nginx/conf.d/_stream.proxy_server.conf; "
+ * 
+ * 注意！
+ *   1. 改完配置后，先运行 `nginx -t` 测试一下配置，看到 "... test is successful" 才是可用的。
+ *   2. 使用 `service nginx restart` 重启服务。
  */
 
 const TEMPLATE = `
