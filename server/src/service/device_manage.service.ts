@@ -44,7 +44,7 @@ export class DeviceManageService {
     });
     list.push({
       id: 'clash',
-      name: 'clash 代理',
+      name: 'clash (国外)代理',
       usable: this.checkDeviceUsable('clash'),
       port: CLASH_HTTP_PROXY_PORT,
       ping: 0,
