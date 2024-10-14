@@ -64,11 +64,11 @@ switch (type) {
 
   // 打印运行命令，方便拷贝到"部署主机"上执行
   case 'print-build': {
-    console.log(`${buildCommand} && ${tagCommand} && ${pushCommand}`);
+    console.log(`${buildCommand} && ${tagCommand} && ${pushCommand} \n`);
     break;
   }
   case 'print-run': {
-    console.log(`${pullCommand} && ${runCommand}`);
+    console.log(`${pullCommand} && ${runCommand} \n`);
     break;
   }
 }

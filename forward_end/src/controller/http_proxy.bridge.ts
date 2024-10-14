@@ -78,8 +78,7 @@ export class HttpProxyBridge {
             if (dataType === 'event') {
                 const { event, args } = _data as ISocketData_ServerEvent<'data'>;
                 if (event === 'data') {
-                    if ((target as net.Socket).readyState === 'readOnly') return;
-                    console.log('readyState: ', (target as net.Socket).readyState)
+                    if ((target as net.Socket).readyState === 'readOnly') return; // 实际应该不会有 "readOnly" ，但看到会有 "writeOnly"
                     target.write(args[0]);
                     return;
                 }
@@ -291,6 +290,7 @@ export class HttpProxyBridge {
                 const data: ISocketData = { type: 'event', uuid, event: 'end', args: [] };
                 this.send(data);
             });
+            clientSocket.on('error', (err) => { logger.debug(`forwardHttpsReq-clientSocket-err: ${err}`); });
         } catch (err) { logger.debug(`forwardHttpsReq-err: ${err}`); }
     }
     /**

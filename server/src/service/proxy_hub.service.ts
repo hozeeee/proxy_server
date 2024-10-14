@@ -84,8 +84,8 @@ export class ProxyHubService {
     // 通过 socket 发送到代理端
     const forwardHttpController = DEVICE_LIST.find(i => i.id === deviceId)?.forwardHttpController;
     const usable = !!this.deviceManageService.checkDeviceUsable(deviceId);
-    if (!usable) return;
-    forwardHttpController?.forwardHttpsReq({ req, socket: clientSocket, head });
+    if (!usable || !forwardHttpController?.forwardHttpsReq) return;
+    forwardHttpController.forwardHttpsReq({ req, socket: clientSocket, head });
   }
 
   /**
@@ -169,7 +169,8 @@ export class ProxyHubService {
 
     // 通过 socket 发送到代理端
     const forwardHttpController = DEVICE_LIST.find(i => i.id === deviceId)?.forwardHttpController;
-    if (!forwardHttpController) return console.log('.....TODO:2')
+    const usable = !!this.deviceManageService.checkDeviceUsable(deviceId);
+    if (!usable || !forwardHttpController?.forwardHttpReq) return;
     forwardHttpController.forwardHttpReq({ req: clientReq, res: clientRes });
 
   }
