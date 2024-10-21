@@ -29,7 +29,7 @@ const pushCommand = `docker push ${localDockerRegistry}/${imageName}`;
 const pullCommand = `docker pull ${localDockerRegistry}/${imageName}`;
 const runCommand = `docker run -d --name proxy_server_v${noDotVersion} --restart=always ${portArgs} ${localDockerRegistry}/${imageName}`;
 
-// TODO: 使用镜像的 Linux 主机配置 /etc/docker/daemon.json
+// TODO: 生成 使用镜像的 Linux 主机配置 /etc/docker/daemon.json
 
 
 /**

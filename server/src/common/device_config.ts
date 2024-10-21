@@ -22,8 +22,7 @@ export type IDeviceId =
    * 普通的代理设备.
    */
   | 'local_test'
-  | 'n2840'
-  | 'xxxx';
+  | 'n2840';
 
 
 /**

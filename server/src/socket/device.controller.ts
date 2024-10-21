@@ -1,6 +1,6 @@
 import { WSController, OnWSConnection, Inject, OnWSMessage, OnWSDisConnection, App, } from '@midwayjs/decorator';
 import { Context, Application as SocketApplication } from '@midwayjs/socketio';
-import { NoticeService } from '../service/notice.service';
+import { NotificationService } from '../service/notification.service';
 import type { IDeviceId } from '../common/device_config';
 import { DEVICE_LIST } from '../common/device_config';
 /* 勿删! 勿改! 用于匹配头部生成新 controller 文件。上面内容都会被作用于新文件。 */
@@ -22,28 +22,28 @@ export class ForwardEndDeviceSocketController {
   @App('socketIO')
   socketApp: SocketApplication;
   @Inject()
-  noticeService: NoticeService;
+  notificationService: NotificationService;
 
 
 
   @OnWSConnection()
   async onConnectionMethod() {
-    const deviceId: IDeviceId = 'local_test';
+    const deviceId = 'local_test' as IDeviceId;
     const deviceConfig = DEVICE_LIST.find(i => i.id === deviceId);
     if (!deviceConfig) {
-      this.noticeService.onNormalError(`在 onConnectionMethod 找不到 ${deviceId} 设备 ID 的配置`);
+      this.notificationService.onNormalError(`在 onConnectionMethod 找不到 ${deviceId} 设备 ID 的配置`);
       return;
     }
     const ws = Array.from(this.socketApp.of(`/${deviceId}`).sockets.values())[0];
     if (!ws) {
-      this.noticeService.onNormalError(`在 onConnectionMethod 找不到 ${deviceId} 设备 ID 的 socket`);
+      this.notificationService.onNormalError(`在 onConnectionMethod 找不到 ${deviceId} 设备 ID 的 socket`);
       return;
     }
 
     /**
      * 设备上线通知
      */
-    this.noticeService.onDeviceOnline(deviceId);
+    this.notificationService.onDeviceOnline(deviceId);
     /**
      * "代理转发"绑定通道。
      */
@@ -59,17 +59,17 @@ export class ForwardEndDeviceSocketController {
 
   @OnWSDisConnection()
   async onDisConnectionMethod() {
-    const deviceId: IDeviceId = 'local_test';
+    const deviceId = 'local_test' as IDeviceId;
     const deviceConfig = DEVICE_LIST.find(i => i.id === deviceId);
     if (!deviceConfig) {
-      this.noticeService.onNormalError(`在 onDisConnectionMethod 找不到 ${deviceId} 设备 ID 的配置`);
+      this.notificationService.onNormalError(`在 onDisConnectionMethod 找不到 ${deviceId} 设备 ID 的配置`);
       return;
     }
 
     /**
      * 设备离线通知
      */
-    this.noticeService.onDeviceOffline(deviceId);
+    this.notificationService.onDeviceOffline(deviceId);
     /**
      * "代理转发"销毁。
      */

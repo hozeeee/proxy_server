@@ -2,9 +2,12 @@ const fs = require('fs');
 const { join } = require('path');
 const deviceList = require('./server/src/common/device_list.json');
 const portConfig = require('./server/src/config/port_config.json');
+const packageJson = require('./package.json');
 
 const ports = Object.values(portConfig);
 ports.push(...deviceList.map(i => i.port));
+
+const projectName = packageJson.name;
 
 const HOSTNAME = process.env.HOSTNAME || '192.168.3.101';
 
@@ -22,17 +25,18 @@ const HOSTNAME = process.env.HOSTNAME || '192.168.3.101';
  */
 
 const TEMPLATE = `
-    upstream proxy_server__<port> {
+    upstream ${projectName}__<port> {
         server ${HOSTNAME}:<port>;
     }
     server {
         listen <port>;
         listen [::]:<port>;
-        proxy_pass proxy_server__<port>;
+        proxy_pass ${projectName}__<port>;
     }
 `;
 
-const content = ports.map(port => TEMPLATE.replace(/\<port\>/g, port)).join('\n');
+const content = `\n# _stream.${projectName}.conf\n\n`
+    + ports.map(port => TEMPLATE.replace(/\<port\>/g, port)).join('\n');
 const filename = join(__dirname, './nginx_stream.conf');
 
 fs.writeFileSync(filename, content);
