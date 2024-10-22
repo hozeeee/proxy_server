@@ -16,7 +16,7 @@ const COPY_FILE_LIST = [
   './README.md',
 ];
 const COPY_FILE_DIRS = [
-  './src/forward_end/src/shell',
+  './src/shell',
 ];
 
 
@@ -29,10 +29,12 @@ for (const filepath of COPY_FILE_LIST) {
   );
 }
 
-for (const dir of COPY_FILE_DIRS) {
+for (const dirPath of COPY_FILE_DIRS) {
+  const pathArr = dirPath.split('/');
+  const dirname = pathArr[pathArr.length - 1];
   fs.copySync(
-    path.join(process.cwd(), dir),
-    path.join(process.cwd(), TARGET_DIR, dir)
+    path.join(process.cwd(), dirPath),
+    path.join(process.cwd(), TARGET_DIR, dirname)
   );
 }
 

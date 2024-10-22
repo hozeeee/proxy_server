@@ -12,11 +12,11 @@
     "build": "npm run build:forward_end && npm run build:server",
     "start:server": "cd server && npm run start",
     "start:clash": "cd server && npm run start:clash",
-    "docker:build": "__COMMAND_TYPE=build LOCAL_DOCKER_REGISTRY=127.0.0.1:5000 node ./docker_command.js",
-    "docker:run": "__COMMAND_TYPE=run node ./docker_command.js",
-    "docker:print-build": "__COMMAND_TYPE=print-build LOCAL_DOCKER_REGISTRY=127.0.0.1:5000 node ./docker_command.js",
-    "docker:print-run": "__COMMAND_TYPE=print-run node ./docker_command.js",
-    "create-nginx-config": "node ./create_nginx_stream.js"
+    "docker:build": "__COMMAND_TYPE=build LOCAL_DOCKER_REGISTRY=127.0.0.1:5000 node ./command.js",
+    "docker:run": "__COMMAND_TYPE=run node ./command.js",
+    "docker:print-build": "__COMMAND_TYPE=print-build LOCAL_DOCKER_REGISTRY=127.0.0.1:5000 node ./command.js",
+    "docker:print-run": "__COMMAND_TYPE=print-run node ./command.js",
+    "create-nginx-config": "__COMMAND_TYPE=create-nginx-config node ./command.js"
   },
   "keywords": [],
   "author": "",
