@@ -73,7 +73,7 @@ export class NotificationService {
     const subject = `[代理系统] 代理设备接入系统(${targetDevice?.name})`;
     const content = [
       '当前所有设备情况：',
-      ...DEVICE_LIST.map((item) => ` ${item.name} | ${item.id} | ${item.commandUseBridge?.ping || 0} ${targetDevice.name === item.name ? '[爱心]' : ''}`),
+      ...DEVICE_LIST.map((item) => ` ${item.name} | ${item.commandUseBridge?.ping || 0} ${targetDevice.name === item.name ? '[爱心]' : ''}`),
       '---------------------------------',
       dayjs().format('YYYY-MM-DD HH:mm:ss')
     ].join('\n');
@@ -89,7 +89,7 @@ export class NotificationService {
     const subject = `[预约系统] 代理设备离线(${targetDevice?.name})`;
     const content = [
       '当前所有设备情况：',
-      ...DEVICE_LIST.map((item) => ` ${item.name} | ${item.id} | ${item.commandUseBridge?.ping || 0} ${targetDevice.name === item.name ? '[心碎]' : ''}`),
+      ...DEVICE_LIST.map((item) => ` ${item.name} | ${item.commandUseBridge?.ping || 0} ${targetDevice.name === item.name ? '[心碎]' : ''}`),
       '---------------------------------',
       dayjs().format('YYYY-MM-DD HH:mm:ss')
     ].join('\n');

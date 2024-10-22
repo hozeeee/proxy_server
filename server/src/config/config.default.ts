@@ -9,9 +9,9 @@ export default (appInfo: MidwayAppInfo) => {
     egg: {
       port,
     },
-    // security: {
-    //   csrf: false,
-    // },
+    security: {
+      csrf: false,
+    },
 
     staticFile: {
       dirs: {
@@ -24,6 +24,7 @@ export default (appInfo: MidwayAppInfo) => {
 
     socketIO: {
       cors: {
+        // TODO: 可能需要加上"爬虫系统"
         origin: ['http://127.0.0.1:5173'],
         methods: ['GET', 'POST'],
       }

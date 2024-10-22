@@ -1,7 +1,7 @@
 // 本脚本会读取 ./src/socket/device.controller.ts 的信息，生成 __device.controller.ts 文件。
 
 const fs = require('fs');
-const deviceList = require('./src/common/device_list.json');
+const deviceList = require('./src/config/device_list.json');
 
 const srcDir = 'src/socket';
 const srcFile = 'device.controller.ts';

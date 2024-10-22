@@ -1,7 +1,7 @@
 const { execSync } = require('child_process');
 
 // 端口
-const deviceList = require('./server/src/common/device_list.json');
+const deviceList = require('./server/src/config/device_list.json');
 const portConfig = require('./server/src/config/port_config.json');
 const ports = Object.values(portConfig)
 ports.push(...deviceList.map(i => i.port));

@@ -1,5 +1,5 @@
 import { HttpProxyBridge, AxiosRequestBridge, TigervncForwardBridge, CommandUseBridge } from 'forward_end';
-import deviceList from './device_list.json';
+import deviceList from '../config/device_list.json';
 
 
 interface IDeviceItem<T extends string> {
