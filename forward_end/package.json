@@ -12,8 +12,8 @@
     "build:script": "rollup -c rollup.config.ts --configPlugin @rollup/plugin-typescript --bundleConfigAsCjs",
     "copy:dist": "node ./dist/on_build_end.js",
     "build": "npm run build:script && npm run copy:dist",
-    "dev": "npm run build && DEVICE_ID=local_test SERVER_HOST=127.0.0.1:8601 node ./dist/end_manager.js",
-    "dev2": "cross-env DEVICE_ID=local_test SERVER_HOST=127.0.0.1:8601 tsc-watch -p ./tsconfig.json --outDir ./node_modules/_dist --module commonjs --onSuccess \"node ./node_modules/_dist/end_manager.js\""
+    "dev": "npm run build && DEVICE_ID=local_test SERVER_HOST=127.0.0.1:8600 node ./dist/end_manager.js",
+    "dev2": "cross-env DEVICE_ID=local_test SERVER_HOST=127.0.0.1:8600 tsc-watch -p ./tsconfig.json --outDir ./node_modules/_dist --module commonjs --onSuccess \"node ./node_modules/_dist/end_manager.js\""
   },
   "keywords": [],
   "author": "",

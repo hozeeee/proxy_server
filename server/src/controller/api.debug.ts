@@ -122,7 +122,7 @@ export class APIDebugController {
       url: 'https://6.ipw.cn/'
     }
     if (!this.socket)
-      this.socket = io(`ws://127.0.0.1:8601/proxy_socket`, { autoConnect: true });
+      this.socket = io(`ws://127.0.0.1:8600/proxy_socket`, { autoConnect: true });
     const res: AxiosResponse<any, any> = await new Promise((resolve) => {
       this.socket.emit('request_axios', 'local_test', config, (res: AxiosResponse<any, any>) => {
         resolve(res)
