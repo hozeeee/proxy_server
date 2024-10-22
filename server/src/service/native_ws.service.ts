@@ -33,17 +33,17 @@ export class NativeWsService {
   @App('socketIO')
   socketApp: SocketApplication;
 
-  /**
-   * 根据路径再创建 Websocket 服务器。
-   */
-  private wssMap = new Map<string, WsServer<typeof WsWebSocket, typeof IncomingMessage>>();
+  // /**
+  //  * 根据路径再创建 Websocket 服务器。
+  //  */
+  // private wssMap = new Map<string, WsServer<typeof WsWebSocket, typeof IncomingMessage>>();
 
   startServer() {
     if (_server) return;
     const server = http.createServer();
     server.on('upgrade', (request, socket, head) => {
       /**
-       * 解析设备号和 vnc 端口号   (格式: /to_vnc/<device_id>/<vnc_port>)
+       * 解析设备号和 vnc 端口号   (格式: /to_vnc/<device_id>/<vnc_port>)    <vnc_port> 默认 5901
        * 通过此方式，能够使用"路径"作为传参的方式，
        * 便于给不同的服务和端口发送连接数据。
        */

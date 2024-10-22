@@ -248,7 +248,7 @@ export class TigervncForwardBridge {
   /**
    * [服务端]
    * 控制端除了上面使用 useSocketIo 接收通用数据，
-   * 还需要创建一个 socket 提供给 UI 界面访问。
+   * 还需要创建一个 websocket 提供给 UI 界面访问。
    * 前端示例代码:
    *   const rfb = new RFB(dom, 'ws://127.0.0.1:6082', { credentials: { password: '19931115', }, });
    */
