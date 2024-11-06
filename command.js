@@ -1,4 +1,6 @@
 const { execSync } = require('child_process');
+const { join } = require('path');
+const fs = require('fs');
 
 // 端口
 const deviceList = require('./server/src/config/device_list.json');
@@ -11,6 +13,11 @@ const portArgs = ports.map(port => `-p ${port}:${port}`).join(' '); // `-p 8600:
 const packageJson = require('./package.json');
 const version = packageJson.version;
 const projectName = packageJson.name;
+
+// 映射目录 (需要在项目文件夹下运行)
+const volumeMap = {
+};
+const volumeArgs = Object.entries(volumeMap).map(([imgPath, hostPath]) => `-p ${hostPath}:${imgPath}`).join(' ');
 
 
 /**
@@ -30,7 +37,7 @@ const pushCommand = `docker push ${localDockerRegistry}/${imageName}`;
 
 // 运行镜像命令  (原始命令 "export no_dot_version=$(echo $npm_package_version | sed 's/\\.//g') && docker run -d --name ${projectName}_v$no_dot_version --restart=always -p 8600:8600 -p 8601:8601 -p 8602:8602 -p 8690:8690 -p 8691:8691 hozeee/${projectName}:$npm_package_version" )
 const pullCommand = `docker pull ${localDockerRegistry}/${imageName}`;
-const runCommand = `docker run -d --name ${projectName}_v${noDotVersion} --restart=always ${portArgs} ${localDockerRegistry}/${imageName}`;
+const runCommand = `docker run -d --name ${projectName}_v${noDotVersion} --restart=always ${volumeArgs} ${portArgs} ${localDockerRegistry}/${imageName}`;
 
 // TODO: 生成 使用镜像的 Linux 主机配置 /etc/docker/daemon.json
 
@@ -54,14 +61,14 @@ function createNginxStream() {
   const HOSTNAME = process.env.HOSTNAME || '192.168.3.101';
 
   const TEMPLATE = `
-  upstream ${projectName}__<port> {
+    upstream ${projectName}__<port> {
       server ${HOSTNAME}:<port>;
-  }
-  server {
+    }
+    server {
       listen <port>;
       listen [::]:<port>;
       proxy_pass ${projectName}__<port>;
-  }
+    }
 `;
 
   const content = `\n# _stream.${projectName}.conf\n\n`

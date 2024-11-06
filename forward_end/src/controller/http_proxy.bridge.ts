@@ -316,9 +316,7 @@ export class HttpProxyBridge {
                     /**
                      * 通知服务端给客户端写入头部。
                      */
-                    const resHead = `HTTP/${httpVersion} 200 Connection Established\r\n` +
-                        // 'Proxy-agent: Node.js-Proxy\r\n' +
-                        '\r\n';
+                    const resHead = `HTTP/${httpVersion} 200 Connection Established\r\n` + /* 'Proxy-agent: Node.js-Proxy\r\n' + */ '\r\n';
                     const _data: ISocketData = { type: 'event', uuid, event: 'data', args: [resHead] as any };
                     this.send(_data);
                     /**

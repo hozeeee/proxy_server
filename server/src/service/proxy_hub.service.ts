@@ -36,22 +36,50 @@ export class ProxyHubService {
      */
     const isUseLocal = deviceId === 'server_local';
     if (isUseLocal) {
+
+      const { port: _port, hostname } = new URL(`http://${req.url}`);
+      const port = Number(_port || '443');
+      const { httpVersion, headers } = req;
+
       const serverSocket = net.connect(port, hostname, () => {
-        // 数据对接
-        clientSocket.write(`HTTP/${req.httpVersion} 200 Connection Established\r\n\r\n`);
-        serverSocket.write(head);
-        serverSocket.pipe(clientSocket);
-        clientSocket.pipe(serverSocket);
+        try {
+          /**
+           * 踩坑记录:
+           *   对于 readyState 的 socket ，它是无法调用 write 方法，
+           *   否则会导致报错，错误也无法被外层的 try-catch 捕捉，导致整个程序崩溃。
+           */
+          if (serverSocket.readyState === 'readOnly') return;
+          const resHead = `HTTP/${httpVersion} 200 Connection Established\r\n` + /* 'Proxy-agent: Node.js-Proxy\r\n' + */ '\r\n';
+          clientSocket.write(resHead);
+        } catch (err) { }
       });
-      // 错误处理
-      serverSocket.on('error', (err) => {
-        clientSocket.write(`HTTP/${req.httpVersion} 500 ${err.message}\r\n`);
+      /**
+       * 踩坑记录:
+       *   error 事件的监听需要在外层(也就是这里)，否则内部不能捕捉到 ETIMEDOUT 的错误。
+       *   无法通过监听 timeout 事件来捕获 ETIMEDOUT 的报错，应该不是同一个东西。
+       *   pointSocket 的报错无法通过 try-catch 来捕获(也就是上面的 try-catch)，它的错误会直接给到最外层，导致程序崩溃。
+       */
+      serverSocket.on('error', (err) => { clientSocket.end(); });
+
+      /**
+       * 实测的坑: 不能把所有通过 for 循环注入所有事件。
+       *   原因一，会不生效，具体情况不太清楚。
+       *   原因二，有些事件之间是"互斥"，例如 'data' 和 'pause'、'readable'、'resume' 。
+       */
+      serverSocket.write(head);
+      serverSocket.on('data', (buf: Buffer) => { clientSocket.write(buf); });
+      serverSocket.on('end', () => {
         clientSocket.end();
       });
-      clientSocket.on('error', (err) => { serverSocket.end(); });
+
+      clientSocket.on('data', (buf: Buffer) => { serverSocket.write(buf); });
+      clientSocket.on('end', () => { serverSocket.end(); });
+      clientSocket.on('error', (err) => {
+        serverSocket.end();
+      });
+
       return;
     }
-
 
     /**
      * 使用 clash 代理。
@@ -81,12 +109,16 @@ export class ProxyHubService {
       return;
     }
 
-    // 通过 socket 发送到代理端
+    /**
+     * 通过 socket 发送到代理端。
+     */
     const forwardHttpController = DEVICE_LIST.find(i => i.id === deviceId)?.forwardHttpController;
     const usable = !!this.deviceManageService.checkDeviceUsable(deviceId);
     if (!usable || !forwardHttpController?.forwardHttpsReq) return;
     forwardHttpController.forwardHttpsReq({ req, socket: clientSocket, head });
   }
+
+
 
   /**
    * 调用此方法的必定是首次连接的。
