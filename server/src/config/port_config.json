@@ -3,5 +3,6 @@
   "proxyServerPort": 8609,
   "nativeWsPort": 8602,
   "CLASH_HTTP_PROXY_PORT": 8690,
-  "CLASH_SOCKS_PROXY_PORT": 8691
+  "CLASH_SOCKS_PROXY_PORT": 8691,
+  "whistleProxyPort": 8699
 }

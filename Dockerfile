@@ -20,6 +20,7 @@ WORKDIR /my_project
 COPY . /my_project/
 
 RUN npm i pm2 -g
+RUN npm i whistle -g
 
 
 # npm 镜像源更换

@@ -13,6 +13,7 @@ import { AxiosProxyEntranceService } from '../service/axios_proxy_entrance.servi
  *   3. 通过制定的数据格式，在此服务发起请求，再拿到响应的数据。
  */
 
+const _subscribe_whistle_map = new Map<string, Context>();
 
 @WSController('/s2s_socket')
 export class ServerToServerSocketController {
@@ -25,6 +26,8 @@ export class ServerToServerSocketController {
   @Inject()
   axiosProxyEntranceService: AxiosProxyEntranceService;
 
+  // 订阅 whistle 上报的信息。
+  subscribe_whistle_map = _subscribe_whistle_map;
 
   @OnWSConnection()
   async onConnectionMethod() {
@@ -39,6 +42,7 @@ export class ServerToServerSocketController {
 
   @OnWSDisConnection()
   async onDisConnectionMethod() {
+    this.subscribe_whistle_map.delete(this.ctx.id);
 
     /**
      * TODO:
@@ -56,6 +60,17 @@ export class ServerToServerSocketController {
   @OnWSMessage('axios_request')
   async handleRequestAxios(deviceId: IDeviceId, config: AxiosRequestConfig) {
     return await this.axiosProxyEntranceService.request(deviceId, config);
+  }
+
+
+
+  /**
+   * 发送订阅 whistle 上报数据。
+   * 不需要参数。
+   */
+  @OnWSMessage('subscribe_whistle')
+  async handleSubscribeWhistle() {
+    this.subscribe_whistle_map.set(this.ctx.id, this.ctx);
   }
 
 }

@@ -24,6 +24,7 @@ export class MainConfiguration implements ILifeCycle {
   async onServerReady(container: IMidwayContainer) {
     const proxyEntranceService = await container.getAsync(HttpProxyEntranceService);
     proxyEntranceService.startServers();
+    // proxyEntranceService.startWhistleProxyServer();
 
     const nativeWsService = await container.getAsync(NativeWsService);
     nativeWsService.startServer();
@@ -32,5 +33,7 @@ export class MainConfiguration implements ILifeCycle {
     if (this.app.config.env === 'local') return; /******** 调试分割线(下面正式代码，本地调试不会执行) ********/
 
     startClash();
+    proxyEntranceService.startWhistleProxyServer();
+
   }
 }

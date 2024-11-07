@@ -1,9 +1,10 @@
 import { Context, Inject, Provide } from '@midwayjs/core';
 import http from 'http';
-import { proxyServerPort, serverPort } from '../config/port_config.json';
+import { proxyServerPort, serverPort, whistleProxyPort } from '../config/port_config.json';
 import { ProxyHubService } from './proxy_hub.service';
 import { type IDeviceId, DEVICE_LIST } from '../common/device_config';
 import { ILogger } from '@midwayjs/logger';
+import { execSync } from 'child_process';
 
 
 /**
@@ -114,6 +115,27 @@ export class HttpProxyEntranceService {
 
     } catch (_) { }
 
+  }
+
+
+  /**
+   * 启动 whistle 代理。
+   *
+   * TODO: 直接访问得不到 whistle 的 html 配置页面
+   */
+  startWhistleProxyServer() {
+    // 先停止
+    try {
+      const command = `w2 stop`;
+      execSync(command);
+    } catch (_) { }
+    console.log('已停止旧 whistle 进程(如有)');
+    // 再启动
+    try {
+      const command = `w2 start -p ${whistleProxyPort}`;
+      execSync(command);
+      console.log(`启动 whistle 成功:  http://127.0.0.1:${whistleProxyPort}`);
+    } catch (err) { console.log(`启动 whistle 失败: ${err?.message || err}`); }
   }
 
 }
