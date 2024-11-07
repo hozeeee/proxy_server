@@ -1,0 +1,14 @@
+{
+  "name": "whistle.req_log",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "tsc -w",
+    "build": "tsc",
+    "link": "npm link"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "typescript": "^4.6.2"
+  }
+}
