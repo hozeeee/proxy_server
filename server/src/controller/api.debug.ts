@@ -10,6 +10,7 @@ import type { Socket as SocketIoClient } from 'socket.io-client';
 import { createConnectSocket } from '../test_demo/socket_connect_to_here';
 import { CLASH_HTTP_PROXY_PORT } from '../config/port_config.json';
 import { DEVICE_LIST } from '../common/device_config';
+import { HttpProxyEntranceService } from '../service/http_proxy_entrance.service';
 
 
 
@@ -18,6 +19,8 @@ import { DEVICE_LIST } from '../common/device_config';
 export class APIDebugController {
   @Inject()
   ctx: Context;
+  @Inject()
+  httpProxyEntranceService: HttpProxyEntranceService;
 
 
   @Get('/test11')
@@ -131,6 +134,13 @@ export class APIDebugController {
     return res;
   }
   private socket: SocketIoClient;
+
+
+
+  @Get('/start_whistle')
+  async startWhistleProxyServer() {
+    this.httpProxyEntranceService.startWhistleProxyServer();
+  }
 
 
 }

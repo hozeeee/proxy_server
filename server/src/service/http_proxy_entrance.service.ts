@@ -1,5 +1,7 @@
 import { Context, Inject, Provide } from '@midwayjs/core';
 import http from 'http';
+import fs from 'fs-extra';
+import { join, resolve } from 'path';
 import { proxyServerPort, serverPort, whistleProxyPort } from '../config/port_config.json';
 import { ProxyHubService } from './proxy_hub.service';
 import { type IDeviceId, DEVICE_LIST } from '../common/device_config';
@@ -120,22 +122,49 @@ export class HttpProxyEntranceService {
 
   /**
    * 启动 whistle 代理。
-   *
-   * TODO: 直接访问得不到 whistle 的 html 配置页面
    */
-  startWhistleProxyServer() {
+  async startWhistleProxyServer() {
     // 先停止
     try {
       const command = `w2 stop`;
       execSync(command);
     } catch (_) { }
-    console.log('已停止旧 whistle 进程(如有)');
-    // 再启动
+    console.log('[startWhistleProxyServer] 已停止旧 whistle 进程(如有)');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    // 启动，让他生成配置文件
     try {
       const command = `w2 start -p ${whistleProxyPort}`;
       execSync(command);
-      console.log(`启动 whistle 成功:  http://127.0.0.1:${whistleProxyPort}`);
-    } catch (err) { console.log(`启动 whistle 失败: ${err?.message || err}`); }
+      console.log(`[startWhistleProxyServer] 启动 whistle 成功:  http://127.0.0.1:${whistleProxyPort}`);
+    } catch (err) { console.log(`[startWhistleProxyServer] 启动 whistle 失败: ${err?.message || err}`); }
+    /**
+     * 检测文件是否存在 (文件不存在就加属性会导致被覆盖)。
+     * 踩坑记录:
+     *   1. fs 的文件操作不能写 "~/.WhistleAppData/.whistle/properties" 这样的路径，"~"无法正确获取到该路径。
+     */
+    const dir = '/root/.WhistleAppData/.whistle/properties';
+    const filename = join(dir, 'properties');
+    let isExist = false;
+    while (!isExist) {
+      isExist = fs.existsSync(filename);
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    // 修改配置文件，默认开启 https 抓包
+    try {
+      let data: Record<string, any> = {};
+      try {
+        const json = fs.readFileSync(filename, { encoding: 'utf-8' }) || '{}';
+        data = JSON.parse(json);
+      } catch (_) { }
+      data.interceptHttpsConnects = true;
+      fs.writeFileSync(filename, JSON.stringify(data));
+    } catch (__) { }
+    // 重启
+    try {
+      const command = `w2 restart`;
+      execSync(command);
+      console.log(`[startWhistleProxyServer] 重启 whistle 成功`); // TODO:del
+    } catch (err) { console.log(`[startWhistleProxyServer] 重启 whistle 失败: ${err?.message || err}`); }
   }
 
 }

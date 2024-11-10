@@ -13,7 +13,10 @@ import { AxiosProxyEntranceService } from '../service/axios_proxy_entrance.servi
  *   3. 通过制定的数据格式，在此服务发起请求，再拿到响应的数据。
  */
 
-const _subscribe_whistle_map = new Map<string, Context>();
+const _subscribe_whistle_map = new Map<string, {
+  ctx: Context;
+  urlRegexpRaw?: { source: string, flags: string };
+}>();
 
 @WSController('/s2s_socket')
 export class ServerToServerSocketController {
@@ -66,11 +69,11 @@ export class ServerToServerSocketController {
 
   /**
    * 发送订阅 whistle 上报数据。
-   * 不需要参数。
+   * 可以提供正则字符串，能过对 url 进行过滤。
    */
   @OnWSMessage('subscribe_whistle')
-  async handleSubscribeWhistle() {
-    this.subscribe_whistle_map.set(this.ctx.id, this.ctx);
+  async handleSubscribeWhistle(urlRegexpRaw?: { source: string, flags: string }) {
+    this.subscribe_whistle_map.set(this.ctx.id, { ctx: this.ctx, urlRegexpRaw, });
   }
 
 }

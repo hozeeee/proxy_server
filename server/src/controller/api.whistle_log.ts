@@ -15,9 +15,17 @@ export class APIDeviceController {
   whistleReqLogService: WhistleReqLogService;
 
 
+  // 下载证书
+  @Get('/ca')
+  async getCa(): Promise<any> {
+    return await this.whistleReqLogService.getWhistleCa();
+  }
+
+
+  // 插件接入专用！
   @Post('/req_log')
-  async req_log(@Body('url') url: string, @Body('reqHeaders') reqHeaders: IncomingHttpHeaders): Promise<any> {
-    return this.whistleReqLogService.uploadLog(url, reqHeaders);
+  async req_log(@Body() body): Promise<any> {
+    return this.whistleReqLogService.uploadLog(body);
   }
 
 

@@ -3,6 +3,9 @@ FROM node:18.16.1-bullseye
 # FROM node:latest
 ENV TZ="Asia/Shanghai"
 
+# RUN apt update
+# RUN apt install vim -y
+
 # clash 配置下载地址
 ENV CLASH_CONFIG_URL="https://a9255d35-f774-3cfe-9a91-abaadf3318f4.nginxcave.xyz/link/ZWwakjF4eVPCHwcg?clash=1"
 
