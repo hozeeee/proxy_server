@@ -16,11 +16,19 @@ ENV CLASH_CONFIG_URL="https://a9255d35-f774-3cfe-9a91-abaadf3318f4.nginxcave.xyz
 # # 解决 vim 打开"中文乱码"的问题
 # COPY --chmod=777 .vimrc /root/.vimrc
 
+
+# 复制 whistle 配置文件 (包括证书、配置)  ~/.WhistleAppData/.whistle/properties
+RUN mkdir -p /root/.WhistleAppData
+COPY ./WhistleAppData /root/.WhistleAppData
+
+
 # 复制项目代码
 RUN mkdir my_project
 WORKDIR /my_project
 # COPY --chmod=777 . /my_project/
 COPY . /my_project/
+
+
 
 RUN npm i pm2 -g
 RUN npm i whistle -g

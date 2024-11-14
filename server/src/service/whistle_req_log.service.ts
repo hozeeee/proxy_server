@@ -35,9 +35,14 @@ export class WhistleReqLogService {
    */
 
 
-  async getWhistleCa() {
+  async getWhistleCa(type?: 'cer' | 'pem' | 'crt') {
     try {
-      const res = await axios.get(`http://127.0.0.1:${whistleProxyPort}/cgi-bin/rootca`, { responseType: 'stream' });
+      let search = '';
+      switch (type) {
+        case 'pem':
+        case 'cer': search = `?type=${type}`;
+      }
+      const res = await axios.get(`http://127.0.0.1:${whistleProxyPort}/cgi-bin/rootca${search}`, { responseType: 'stream' });
       return res.data;
     } catch (_) { }
     return 'error...';

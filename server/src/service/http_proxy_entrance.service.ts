@@ -137,34 +137,6 @@ export class HttpProxyEntranceService {
       execSync(command);
       console.log(`[startWhistleProxyServer] 启动 whistle 成功:  http://127.0.0.1:${whistleProxyPort}`);
     } catch (err) { console.log(`[startWhistleProxyServer] 启动 whistle 失败: ${err?.message || err}`); }
-    /**
-     * 检测文件是否存在 (文件不存在就加属性会导致被覆盖)。
-     * 踩坑记录:
-     *   1. fs 的文件操作不能写 "~/.WhistleAppData/.whistle/properties" 这样的路径，"~"无法正确获取到该路径。
-     */
-    const dir = '/root/.WhistleAppData/.whistle/properties';
-    const filename = join(dir, 'properties');
-    let isExist = false;
-    while (!isExist) {
-      isExist = fs.existsSync(filename);
-      await new Promise(resolve => setTimeout(resolve, 300));
-    }
-    // 修改配置文件，默认开启 https 抓包
-    try {
-      let data: Record<string, any> = {};
-      try {
-        const json = fs.readFileSync(filename, { encoding: 'utf-8' }) || '{}';
-        data = JSON.parse(json);
-      } catch (_) { }
-      data.interceptHttpsConnects = true;
-      fs.writeFileSync(filename, JSON.stringify(data));
-    } catch (__) { }
-    // 重启
-    try {
-      const command = `w2 restart`;
-      execSync(command);
-      console.log(`[startWhistleProxyServer] 重启 whistle 成功`); // TODO:del
-    } catch (err) { console.log(`[startWhistleProxyServer] 重启 whistle 失败: ${err?.message || err}`); }
   }
 
 }

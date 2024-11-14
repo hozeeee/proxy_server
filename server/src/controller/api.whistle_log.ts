@@ -17,8 +17,12 @@ export class APIDeviceController {
 
   // 下载证书
   @Get('/ca')
-  async getCa(): Promise<any> {
-    return await this.whistleReqLogService.getWhistleCa();
+  async getCa(@Query('type') type: 'cer' | 'pem' | 'crt' = 'crt'): Promise<any> {
+    const body = await this.whistleReqLogService.getWhistleCa(type);
+    type = ['cer', 'pem', 'crt'].includes(type) ? type : 'crt';
+    this.ctx.body = body;
+    const filename = `rootCA.${type}`;
+    this.ctx.set('Content-Disposition', `attachment; filename="${filename}"`);
   }
 
 
