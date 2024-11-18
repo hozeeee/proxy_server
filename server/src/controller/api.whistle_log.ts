@@ -7,7 +7,7 @@ import { IncomingHttpHeaders } from 'http';
 
 
 
-@Controller('/api/whistle_log')
+@Controller('/api/whistle')
 export class APIDeviceController {
   @Inject()
   ctx: Context;
@@ -18,11 +18,11 @@ export class APIDeviceController {
   // 下载证书
   @Get('/ca')
   async getCa(@Query('type') type: 'cer' | 'pem' | 'crt' = 'crt'): Promise<any> {
-    const body = await this.whistleReqLogService.getWhistleCa(type);
     type = ['cer', 'pem', 'crt'].includes(type) ? type : 'crt';
-    this.ctx.body = body;
     const filename = `rootCA.${type}`;
     this.ctx.set('Content-Disposition', `attachment; filename="${filename}"`);
+    const body = await this.whistleReqLogService.getWhistleCa(type);
+    this.ctx.body = body;
   }
 
 

@@ -15,7 +15,7 @@ export default (server: Whistle.PluginServer, options: Whistle.PluginOptions) =>
         const resHeader = session.res.headers;
 
         // 上报 (注意端口号配置)
-        const logServerHref = `http://127.0.0.1:${8600}/api/whistle_log/req_log`;
+        const logServerHref = `http://127.0.0.1:${8600}/api/whistle/req_log`;
         axios.post(logServerHref, { url, reqHeaders, });
       } catch (_) { }
     });
