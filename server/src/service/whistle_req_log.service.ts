@@ -68,4 +68,24 @@ export class WhistleReqLogService {
     } catch (_) { }
   }
 
+
+  readonly THIS_SERVER_HREF = 'ipv6.fhz920p.seeseeyou.cn:8699';
+  // 生成 PAC 文件内容
+  getPacFile(matchList: string[] = [], defaultProxy = 'DIRECT', fallbackDefault = false) {
+    const pacContent = `
+      function FindProxyForURL(url, host) {
+        ${matchList.map(m => `
+          if (shExpMatch(host, "${m}")) {
+            return "PROXY ${this.THIS_SERVER_HREF}${fallbackDefault ? `; ${defaultProxy};` : ''}";
+          }
+        `).join('')}
+        return "${defaultProxy}"; // 默认直接连接
+      }
+    `;
+    return pacContent;
+    // NOTE: 在 controller 的接口方法需要加上下面两句代码
+    // this.ctx.set('Content-Type', 'application/x-ns-proxy-autoconfig');
+    // this.ctx.set('Content-Disposition', 'attachment; filename="proxy.pac"');
+  }
+
 }
