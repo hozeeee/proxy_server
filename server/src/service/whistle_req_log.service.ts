@@ -69,7 +69,7 @@ export class WhistleReqLogService {
   }
 
 
-  readonly THIS_SERVER_HREF = 'ipv6.fhz920p.seeseeyou.cn:8699';
+  readonly THIS_SERVER_HREF = `ipv6.fhz920p.seeseeyou.cn:${whistleProxyPort}`;
   // 生成 PAC 文件内容
   getPacFile(matchList: string[] = [], defaultProxy = 'DIRECT', fallbackDefault = false) {
     const pacContent = `
