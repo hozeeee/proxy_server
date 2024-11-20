@@ -15,7 +15,15 @@ export class APIDeviceController {
   whistleReqLogService: WhistleReqLogService;
 
 
-  // 下载证书
+  /**
+   * 下载证书
+   *
+   *
+   * 苹果手机使用:
+   *   1. 下载 ca 文件。
+   *   2. 找到改文件，点击安装。通常点击后会提示去"设置"点击特点选项安装。
+   *   3. 安装成功后，到 "设置-通用-关于本机-证书信任设置" 会看到刚安装好的证书，开启"完全信任"。
+   */
   @Get('/ca')
   async getCa(@Query('type') type: 'cer' | 'pem' | 'crt' = 'crt'): Promise<any> {
     type = ['cer', 'pem', 'crt'].includes(type) ? type : 'crt';
@@ -51,12 +59,14 @@ export class APIDeviceController {
   async dynamicGetPacFile(@Query('host_matches') host_matches: string) {
     let pacContent = this.whistleReqLogService.getPacFile([], 'DIRECT');
     try {
-      const matchList = host_matches.split(',');
-      pacContent = this.whistleReqLogService.getPacFile(
-        matchList,
-        `PROXY ${this.whistleReqLogService.THIS_SERVER_HREF}`,
-        true
-      );
+      if (host_matches) {
+        const matchList = host_matches.split(',');
+        pacContent = this.whistleReqLogService.getPacFile(
+          matchList,
+          'DIRECT',
+          true
+        );
+      }
     } catch (_) { }
     this.ctx.set('Content-Type', 'application/x-ns-proxy-autoconfig');
     this.ctx.set('Content-Disposition', 'attachment; filename="proxy.pac"');
