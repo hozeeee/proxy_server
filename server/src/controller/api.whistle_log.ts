@@ -47,6 +47,9 @@ export class APIDeviceController {
    *
    * 踩坑记录:
    *   1. 安装代理通过 wifi 设置，但需要安装代理证书(通过上面的接口下载)，否则不会生效。
+   *
+   * 写法参考:
+   *   https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Proxy_servers_and_tunneling/Proxy_Auto-Configuration_PAC_file
    */
   @Get('/proxy.pac')
   async getPacFile() {
