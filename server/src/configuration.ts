@@ -6,6 +6,7 @@ import { HttpProxyEntranceService } from './service/http_proxy_entrance.service'
 import { NativeWsService } from './service/native_ws.service';
 import * as socketio from '@midwayjs/socketio';
 import { downloadConfig, startClash } from './common/clash_controller';
+import { GetDomainMiddleware } from './middleware/get_domain.middleware';
 
 
 @Configuration({
@@ -17,7 +18,7 @@ export class MainConfiguration implements ILifeCycle {
   app: egg.Application;
 
   async onReady() {
-
+    this.app.useMiddleware(GetDomainMiddleware);
   }
 
 
@@ -34,6 +35,7 @@ export class MainConfiguration implements ILifeCycle {
 
     startClash();
     proxyEntranceService.startWhistleProxyServer();
+    proxyEntranceService.startChiiServer();
 
   }
 }

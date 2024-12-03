@@ -2,10 +2,12 @@
 import { Inject, Controller, Post, Query, Get, Body } from '@midwayjs/core';
 import { Context } from '@midwayjs/web';
 import { WhistleReqLogService } from '../service/whistle_req_log.service';
-import { IncomingHttpHeaders } from 'http';
+import { addChiiInjection, delChiiInjection, getChiiInjectionList, getDomains, writeChiiConfigForInjection } from '../service/chii_manager.service';
+import { restartWhistleServer } from '../service/http_proxy_entrance.service';
 
 
 
+const chiiInjectionList: string[] = [];
 
 @Controller('/api/whistle')
 export class APIDeviceController {
@@ -86,6 +88,34 @@ export class APIDeviceController {
     this.ctx.set('Content-Type', 'application/x-ns-proxy-autoconfig');
     this.ctx.set('Content-Disposition', 'attachment; filename="proxy.pac"');
     this.ctx.body = pacContent;
+  }
+
+
+
+  @Get('/domain/list')
+  async getDomainList() {
+    return getDomains();
+  }
+  /**
+   * 管理注入 chii 脚本的页面。
+   */
+  @Get('/chii_injection/list')
+  async getChiiInjectionList() {
+    return getChiiInjectionList();
+  }
+  @Get('/chii_injection/add')
+  async addChiiInjection(@Query('href') href: string, @Query('domain') domain: string) {
+    if (typeof href !== 'string' || typeof domain !== 'string') return false;
+    const success1 = addChiiInjection(href, domain);
+    const success2 = writeChiiConfigForInjection();
+    const success3 = restartWhistleServer();
+    return success1 && success2 && success3;
+  }
+  @Get('/chii_injection/del')
+  async delChiiInjection(@Query('href') href: string) {
+    const success1 = delChiiInjection(href);
+    const success2 = writeChiiConfigForInjection();
+    return success1 && success2;
   }
 
 }

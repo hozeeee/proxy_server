@@ -32,6 +32,7 @@ COPY . /my_project/
 
 RUN npm i pm2 -g
 RUN npm i whistle -g
+RUN npm i chii -g
 
 
 # npm 镜像源更换

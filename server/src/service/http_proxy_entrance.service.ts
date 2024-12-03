@@ -2,7 +2,7 @@ import { Context, Inject, Provide } from '@midwayjs/core';
 import http from 'http';
 import fs from 'fs-extra';
 import { join, resolve } from 'path';
-import { proxyServerPort, serverPort, whistleProxyPort } from '../config/port_config.json';
+import { proxyServerPort, serverPort, whistleProxyPort ,chiiPort} from '../config/port_config.json';
 import { ProxyHubService } from './proxy_hub.service';
 import { type IDeviceId, DEVICE_LIST } from '../common/device_config';
 import { ILogger } from '@midwayjs/logger';
@@ -131,7 +131,7 @@ export class HttpProxyEntranceService {
     } catch (_) { }
     console.log('[startWhistleProxyServer] 已停止旧 whistle 进程(如有)');
     await new Promise(resolve => setTimeout(resolve, 1000));
-    // 启动，让他生成配置文件
+    // 启动
     try {
       const command = `w2 start -p ${whistleProxyPort}`;
       execSync(command);
@@ -139,4 +139,28 @@ export class HttpProxyEntranceService {
     } catch (err) { console.log(`[startWhistleProxyServer] 启动 whistle 失败: ${err?.message || err}`); }
   }
 
+
+  /**
+   * 启动 chii 调试服务。
+   * TODO: 未验证 dev 阶段是否会重复执行，旧的是否会被关闭。
+   */
+  async startChiiServer() {
+    try {
+      const command = `chii start -p ${chiiPort} -h ::`;
+      execSync(command);
+      console.log(`[startChiiServer] 启动 chii 成功:  http://127.0.0.1:${chiiPort}`);
+    } catch (err) { console.log(`[startChiiServer] 启动 chii 失败: ${err?.message || err}`); }
+  }
+
+}
+
+
+// 重启 whistle
+export function restartWhistleServer() {
+  try {
+    const command = `w2 restart`;
+    execSync(command);
+    return true;
+  } catch (_) { }
+  return false;
 }
