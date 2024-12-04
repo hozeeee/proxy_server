@@ -47,6 +47,14 @@ RUN npm config set registry=https://registry.npm.taobao.org
 RUN npm i \
   && npm run build
 
+
+# 软链文件夹 (方便外部使用短一点的路径)
+RUN ln -sf /my_project/server/cache_files /server_cache_files
+
+# 卷映射
+VOLUME ["/server_cache_files"]
+
+
 EXPOSE 8600-8699
 
 # 健康检测  (参数说明 https://www.51cto.com/article/716923.html )

@@ -1,3 +1,7 @@
+.dockerignore
+.gitignore
+Dockerfile*
+
 logs/
 npm-debug.log
 yarn-error.log
@@ -13,8 +17,8 @@ run/
 .tsbuildinfo.*
 
 typings/
-__*.controller.ts
-clash/*.yaml
-clash/*.log
-publish/forward_end/
 cache_files/
+
+# 容器内创建的目录
+server_cache_files/
+

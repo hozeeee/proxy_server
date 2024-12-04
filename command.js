@@ -16,6 +16,7 @@ const projectName = packageJson.name;
 
 // 映射目录 (需要在项目文件夹下运行)
 const volumeMap = {
+  '/server_cache_files': join(__dirname, 'server_cache_files'),
 };
 const volumeArgs = Object.entries(volumeMap).map(([imgPath, hostPath]) => `-p ${hostPath}:${imgPath}`).join(' ');
 

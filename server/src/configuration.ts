@@ -7,6 +7,7 @@ import { NativeWsService } from './service/native_ws.service';
 import * as socketio from '@midwayjs/socketio';
 import { downloadConfig, startClash } from './common/clash_controller';
 import { GetDomainMiddleware } from './middleware/get_domain.middleware';
+import { restoreChiiConfigFromCacheFile } from './service/chii_manager.service';
 
 
 @Configuration({
@@ -34,6 +35,7 @@ export class MainConfiguration implements ILifeCycle {
     if (this.app.config.env === 'local') return; /******** 调试分割线(下面正式代码，本地调试不会执行) ********/
 
     startClash();
+    restoreChiiConfigFromCacheFile();
     proxyEntranceService.startWhistleProxyServer();
     proxyEntranceService.startChiiServer();
 

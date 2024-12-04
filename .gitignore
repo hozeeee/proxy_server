@@ -1,4 +1,6 @@
 
 
+server_cache_files/
+
 nginx_stream.conf
 

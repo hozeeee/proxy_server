@@ -7,8 +7,6 @@ import { restartWhistleServer } from '../service/http_proxy_entrance.service';
 
 
 
-const chiiInjectionList: string[] = [];
-
 @Controller('/api/whistle')
 export class APIDeviceController {
   @Inject()
@@ -105,17 +103,44 @@ export class APIDeviceController {
   }
   @Get('/chii_injection/add')
   async addChiiInjection(@Query('href') href: string, @Query('domain') domain: string) {
-    if (typeof href !== 'string' || typeof domain !== 'string') return false;
-    const success1 = addChiiInjection(href, domain);
-    const success2 = writeChiiConfigForInjection();
-    const success3 = restartWhistleServer();
-    return success1 && success2 && success3;
+    const res = { success: false, msg: '', data: null }
+    if (typeof href !== 'string' || typeof domain !== 'string') {
+      res.msg = `参数类型异常: href(${href}) domain(${domain})`;
+      return res;
+    }
+    res.success = addChiiInjection(href, domain);
+    if (!res.success) {
+      res.msg = `addChiiInjection 执行异常`;
+      return res;
+    }
+    res.success = writeChiiConfigForInjection();
+    if (!res.success) {
+      res.msg = `writeChiiConfigForInjection 执行异常`;
+      return res;
+    }
+    res.success = restartWhistleServer();
+    if (!res.success) {
+      res.msg = `restartWhistleServer 执行异常`;
+      return res;
+    }
+    res.success = true;
+    return res;
   }
   @Get('/chii_injection/del')
   async delChiiInjection(@Query('href') href: string) {
-    const success1 = delChiiInjection(href);
-    const success2 = writeChiiConfigForInjection();
-    return success1 && success2;
+    const res = { success: false, msg: '', data: null }
+    res.success = delChiiInjection(href);
+    if (!res.success) {
+      res.msg = `delChiiInjection 执行异常`;
+      return res;
+    }
+    res.success = writeChiiConfigForInjection();
+    if (!res.success) {
+      res.msg = `writeChiiConfigForInjection 执行异常`;
+      return res;
+    }
+    res.success = true;
+    return res;
   }
 
 }

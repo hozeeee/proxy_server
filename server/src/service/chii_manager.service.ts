@@ -8,6 +8,9 @@ import { type IDeviceId, DEVICE_LIST } from '../common/device_config';
 import { ILogger } from '@midwayjs/logger';
 import { execSync } from 'child_process';
 
+export const CACHE_FILE_DIR = join(process.cwd(), 'cache_files');
+fs.ensureDirSync(CACHE_FILE_DIR);
+
 
 /**
  * 说明:
@@ -27,12 +30,14 @@ import { execSync } from 'child_process';
  */
 
 
-// export const WHISTLE_RULES_FILE = join(process.cwd(), '../', 'WhistleAppData/.whistle/rules/properties');   // 本地测试
-export const WHISTLE_RULES_FILE = join('/root', './.WhistleAppData/.whistle/rules/properties');
+const isLocalEnv = process.env.NODE_ENV === 'local';
+
+const WHISTLE_RULES_FILE = !isLocalEnv ? join('/root', './.WhistleAppData/.whistle/rules/properties')
+  : join(process.cwd(), '../', 'WhistleAppData/.whistle/rules/properties');   // 本地测试
 fs.ensureFile(WHISTLE_RULES_FILE);
 
-// export const WHISTLE_VALUES_FILES_DIR = join(process.cwd(), '../', 'WhistleAppData/.whistle/values/files');   // 本地测试
-export const WHISTLE_VALUES_FILES_DIR = join('/root', './.WhistleAppData/.whistle/values/files');
+const WHISTLE_VALUES_FILES_DIR = !isLocalEnv ? join('/root', './.WhistleAppData/.whistle/values/files')
+  : join(process.cwd(), '../', 'WhistleAppData/.whistle/values/files');   // 本地测试
 fs.ensureDir(WHISTLE_VALUES_FILES_DIR);
 
 
@@ -40,9 +45,11 @@ fs.ensureDir(WHISTLE_VALUES_FILES_DIR);
 const _domains: string[] = [];
 export const getDomains = () => [..._domains];
 export const addDomain = (host: string) => {
+  if (!host || typeof host !== 'string') return false;
   const [domain, port] = host.split(':');
   if (!_domains.includes(domain)) {
     _domains.push(domain);
+    updateChiiConfigToCacheFile();
     return true;
   }
   return false;
@@ -57,18 +64,18 @@ export const addDomain = (host: string) => {
 const _chiiInjectionList: string[][] = [];
 export const getChiiInjectionList = () => _chiiInjectionList.map(l => [...l]);
 export const addChiiInjection = (href: string, domain: string) => {
-  if (!href || !domain) return false;
+  if (!href || !domain || typeof href !== 'string' || typeof domain !== 'string') return false;
   const index = _chiiInjectionList.findIndex(l => l[0] === href);
   if (index === -1) {
     _chiiInjectionList.push([href, domain]);
-    return true;
   }
   else {
     const isSame = _chiiInjectionList[index][1] === domain;
     if (isSame) return false;
     _chiiInjectionList[index][1] = domain;
-    return true;
   }
+  updateChiiConfigToCacheFile();
+  return true;
 }
 export const delChiiInjection = (href: string) => {
   if (!href) return false;
@@ -202,4 +209,42 @@ export function writeChiiConfigForInjection() {
 
 function getDomainBase64(domain: string) {
   return Buffer.from(domain).toString('base64');
+}
+
+
+
+
+/**
+ * 服务器重启后的数据恢复。
+ */
+const CHII_CONFIG_CACHE_FILENAME = join(CACHE_FILE_DIR, 'chii_config_cache.json');
+let _writeChiiConfigCacheLock = false;
+export function updateChiiConfigToCacheFile() {
+  if (_writeChiiConfigCacheLock) {
+    console.debug(`保存 chii 配置缓存失败: updateChiiConfigToCacheFile 执行中，无法写入`);
+    return;
+  }
+  _writeChiiConfigCacheLock = true;
+  try {
+    const record = { domains: _domains, chiiInjectionList: _chiiInjectionList }
+    const json = JSON.stringify(record, undefined, 2);
+    fs.writeFileSync(CHII_CONFIG_CACHE_FILENAME, json);
+  } catch (err: any) {
+    console.info(`保存 chii 配置缓存失败: ${err?.message || err}`);
+  }
+  _writeChiiConfigCacheLock = false;
+}
+export function restoreChiiConfigFromCacheFile() {
+  try {
+    const json = fs.readFileSync(CHII_CONFIG_CACHE_FILENAME, { encoding: 'utf-8' });
+    const { domains, chiiInjectionList } = JSON.parse(json);
+    _domains.splice(0, _domains.length, ...domains);
+    _chiiInjectionList.splice(0, _chiiInjectionList.length, ...chiiInjectionList);
+    // 写入配置文件
+    writeChiiConfigForTargetJs();
+    writeChiiInjectionHtml();
+    writeChiiConfigForInjection();
+  } catch (err: any) {
+    console.error(`从缓存中恢复 chii 配置失败: ${err?.message || err}`);
+  }
 }
