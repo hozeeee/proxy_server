@@ -18,7 +18,7 @@ const projectName = packageJson.name;
 const volumeMap = {
   '/server_cache_files': join(__dirname, 'server_cache_files'),
 };
-const volumeArgs = Object.entries(volumeMap).map(([imgPath, hostPath]) => `-p ${hostPath}:${imgPath}`).join(' ');
+const volumeArgs = Object.entries(volumeMap).map(([imgPath, hostPath]) => `-v ${hostPath}:${imgPath}`).join(' ');
 
 
 /**
@@ -119,6 +119,7 @@ switch (type) {
     break;
   }
   case 'print-run': {
+    console.log('执行命令:(注意是否包含卷映射)');
     console.log(`${pullCommand} && ${runCommand} \n`);
     break;
   }
