@@ -6,7 +6,9 @@ import { HttpProxyEntranceService, startWhistleProxyServer } from './service/htt
 import { NativeWsService } from './service/native_ws.service';
 import * as socketio from '@midwayjs/socketio';
 import { downloadConfig, startClash } from './common/clash_controller';
-import { GetDomainMiddleware } from './middleware/get_domain.middleware';
+
+// TODO: 关于 chii 脚本注入的功能，暂时不可用
+// import { GetDomainMiddleware } from './middleware/get_domain.middleware';
 // import { copyErudaToPublish, restoreChiiConfigFromCacheFile, startChiiServer } from './service/chii_manager.service';
 
 
@@ -19,7 +21,7 @@ export class MainConfiguration implements ILifeCycle {
   app: egg.Application;
 
   async onReady() {
-    this.app.useMiddleware(GetDomainMiddleware);
+    // this.app.useMiddleware(GetDomainMiddleware);
   }
 
 
