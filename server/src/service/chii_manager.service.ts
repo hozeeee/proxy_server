@@ -1,12 +1,8 @@
-import { Context, Inject, Provide } from '@midwayjs/core';
-import http from 'http';
+import { Provide } from '@midwayjs/core';
 import fs from 'fs-extra';
 import { join, resolve } from 'path';
-import { proxyServerPort, serverPort, whistleProxyPort, chiiPort } from '../config/port_config.json';
-import { ProxyHubService } from './proxy_hub.service';
-import { type IDeviceId, DEVICE_LIST } from '../common/device_config';
-import { ILogger } from '@midwayjs/logger';
-import { execSync } from 'child_process';
+import { chiiPort, serverPort } from '../config/port_config.json';
+import { exec, execSync } from 'child_process';
 
 export const CACHE_FILE_DIR = join(process.cwd(), 'cache_files');
 fs.ensureDirSync(CACHE_FILE_DIR);
@@ -16,6 +12,8 @@ fs.ensureDirSync(CACHE_FILE_DIR);
  * 说明:
  *   用于获取当前服务挂载的域名，
  *   只需要检测一次。
+ *
+ * TODO: 这功能实际不太可用，在容器中运行可能存在网络问题，类似于 通过域名访问 whistle 不可达。
  *
  * 完整链路:
  *   1. 终端设备通过本项目的 whistle 服务代理；
@@ -175,8 +173,12 @@ export function writeChiiInjectionHtml() {
       const injectionFilename = `${index + 1}.chii_injection.${getDomainBase64(domain)}.html`;
       filesOrder.push(injectionFilename);
       const content = `
-<div style="width: 100%; height: 10px; background-color: red;"></div>
+<div style="width: 100%; height: 10px; background-color: green;"></div>
 <script src="//${domain}:${chiiPort}/target.js"></script>
+<div style="width: 100%; height: 10px; background-color: red;"></div>
+<!-- TODO: 在 https 网站也会存在 target.js 一样的访问问题，这个暂未解决。 -->
+<script src="http://${domain}:${serverPort}/eruda.js"></script>
+<script>eruda.init();</script>
 `;
       fs.writeFileSync(join(WHISTLE_VALUES_FILES_DIR, injectionFilename), content);
       // 写入 properties 文件
@@ -211,6 +213,70 @@ function getDomainBase64(domain: string) {
   return Buffer.from(domain).toString('base64');
 }
 
+
+
+
+/**
+ * 它的模版文件有问题，对于非本地启动的情况不可用。
+ */
+function fixChiiIndexTpl() {
+  try {
+    if (isLocalEnv) {
+      console.log('本地调试不执行 fixChiiIndexTpl');
+      return true;
+    }
+    const npmRootPath = execSync('npm root -g', { encoding: 'utf-8' }).replaceAll('\n', '');
+    console.log('npmRootPath: ', npmRootPath) // TODO:del
+    const tplPath = join(npmRootPath, 'chii/server/tpl/index.hbs');
+    let srcTpl = fs.readFileSync(tplPath, { encoding: 'utf-8' });
+    srcTpl = srcTpl.replace(`window.domain = '{{domain}}';`, `window.domain = '/';`);
+    srcTpl = srcTpl.replace(`<script src="//{{domain}}{{basePath}}index.js"></script>`, `<script src="{{basePath}}index.js"></script>`);
+    fs.writeFileSync(tplPath, srcTpl);
+    return true;
+  } catch (err) {
+    console.log('fixChiiIndexTpl 执行异常: ', err);
+  }
+  return false;
+}
+
+/**
+   * 启动 chii 调试服务。
+   * TODO: 未验证 dev 阶段是否会重复执行，旧的是否会被关闭。
+   *
+   * 踩坑记录:
+   *   "chii start" 是在前台启动，需要加上 "&" 转成后台运行。
+   *   不能使用 execSync ，好像会导致整个容器服务都挂掉。
+   */
+export function startChiiServer() {
+  try {
+    fixChiiIndexTpl();
+    const command = `chii start -p ${chiiPort} -h :: &`;
+    // const res = execSync(command);
+    // const res = spawnSync('chii', ['start', '-p', `${chiiPort}`, '&'], { encoding: 'utf-8' });
+    const res = exec(command);
+    console.log('chii-start-res: ', res) // TODO: 获取进程ID，方便后续关闭
+    console.log(`[startChiiServer] 启动 chii 成功:  http://127.0.0.1:${chiiPort}`);
+    return true;
+  } catch (err) { console.log(`[startChiiServer] 启动 chii 失败: ${err?.message || err}`); }
+  return false;
+}
+
+
+
+/**
+ * 将 eruda 文件拷贝到 publish 目录下。 /root/proxy_server/server/node_modules/eruda/eruda.js
+ */
+export function copyErudaToPublish() {
+  try {
+    const filename = join(process.cwd(), 'node_modules/eruda/eruda.js');
+    const targetFilename = join(process.cwd(), 'publish/eruda.js');
+    fs.copyFileSync(filename, targetFilename);
+    return true;
+  } catch (err) {
+    console.log('copyErudaToPublish 执行失败: ', err);
+  }
+  return false;
+}
 
 
 

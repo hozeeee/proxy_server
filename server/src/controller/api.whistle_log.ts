@@ -2,7 +2,7 @@
 import { Inject, Controller, Post, Query, Get, Body } from '@midwayjs/core';
 import { Context } from '@midwayjs/web';
 import { WhistleReqLogService } from '../service/whistle_req_log.service';
-import { addChiiInjection, delChiiInjection, getChiiInjectionList, getDomains, writeChiiConfigForInjection } from '../service/chii_manager.service';
+import { addChiiInjection, delChiiInjection, getChiiInjectionList, getDomains, startChiiServer, writeChiiConfigForInjection } from '../service/chii_manager.service';
 import { restartWhistleServer } from '../service/http_proxy_entrance.service';
 
 
@@ -141,6 +141,23 @@ export class APIDeviceController {
     }
     res.success = true;
     return res;
+  }
+
+
+  /**
+   * chii 服务的启动/关闭/重启。
+   */
+  @Get('/chii/start')
+  async chiiStart() {
+    return startChiiServer();
+  }
+  @Get('/chii/end')
+  async chiiEnd() {
+    // TODO:
+  }
+  @Get('/chii/restart')
+  async chiiRestart() {
+    // TODO:
   }
 
 }
