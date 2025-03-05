@@ -1,4 +1,4 @@
-import { defineConfig, } from 'rollup';
+import { defineConfig, RollupOptions, } from 'rollup';
 import resolve from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
 import commonjs from '@rollup/plugin-commonjs';
@@ -12,13 +12,13 @@ const getDistFilename = (srcFilename = '') => srcFilename.replace('.ts', '.js').
 
 export default () => {
 
-  const dir = join(__dirname, 'src/controller');
+  const dir = join(__dirname, 'src/bridge');
   const bridgeFilenames = fs.readdirSync(dir);
 
   /**
    * index.ts 文件生成后再运行构建。
    */
-  const indexJsExternal = bridgeFilenames.map(filename => `./controller/${filename}`.replace('.ts', ''));
+  const indexJsExternal = bridgeFilenames.map(filename => `./bridge/${filename}`.replace('.ts', ''));
   const fileContent = `
     /**
      * 其他程序通过 SDK 的方式引入。
@@ -32,9 +32,9 @@ export default () => {
    * bridge 打包配置。
    */
   const bridgeConfigs = bridgeFilenames.map(filename => ({
-    input: `./src/controller/${filename}`,
+    input: `./src/bridge/${filename}`,
     output: {
-      file: `dist/controller/${filename.replace('.ts', '.js')}`,
+      file: `dist/bridge/${filename.replace('.ts', '.js')}`,
       format: 'cjs',
     },
     plugins: [
@@ -76,6 +76,21 @@ export default () => {
       // external: ['wrtc', 'imap'],
       treeshake: true,
     },
+    // {
+    //   input: './src/daemon.ts',
+    //   output: {
+    //     file: 'dist/daemon.js',
+    //     format: 'cjs'
+    //   },
+    //   plugins: [
+    //     typescript(),
+    //     resolve(),
+    //     json(),
+    //     commonjs(),
+    //   ],
+    //   // external: ['wrtc', 'imap'],
+    //   treeshake: true,
+    // },
 
     {
       input: 'on_build_end.ts',
