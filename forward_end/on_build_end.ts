@@ -13,6 +13,7 @@ fs.ensureDirSync(TARGET_DIR);
  */
 const COPY_FILE_LIST = [
   './dist/end_manager.js',
+  './dist/daemon.js',
   './README.md',
 ];
 const COPY_FILE_DIRS = [

@@ -41,7 +41,13 @@ export class ForwardEndDeviceSocketController {
     }
 
     /**
-     * 设备上线通知
+     * 测试专用的设备 ID 不需要做下面的事情。
+     */
+    if (deviceId === 'update_test') return;
+
+    /**
+     * 设备上线通知。
+     * (测试连接的不需要提醒通知)
      */
     this.notificationService.onDeviceOnline(deviceId);
     /**
@@ -52,6 +58,7 @@ export class ForwardEndDeviceSocketController {
     deviceConfig.tigervncForwardController.useSocketIo(ws as any);
     deviceConfig.commandUseBridge.useSocketIo(ws as any);
     deviceConfig.commandUseBridge.heartbeatInterval();
+    deviceConfig.updateClientBridge.useSocketIo(ws as any);
 
     // TODO: 后续扩展其他，例如: 远程控制，命令行转发，端口转发等。
   }

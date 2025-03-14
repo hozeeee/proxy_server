@@ -33,4 +33,12 @@ export class APIDeviceController {
   }
 
 
+  /**
+   * 测试通过"通知指令"来更新脚本代码。
+   */
+  @Get('/upgrade_script')
+  async upgrade_script_code(@Query('device_id') device_id: string): Promise<{ success: boolean; msg: string; }> {
+    return this.deviceManageService.upgradeDeviceScriptCode(device_id as IDeviceId);
+  }
+
 }

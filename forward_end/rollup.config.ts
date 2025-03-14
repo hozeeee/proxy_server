@@ -76,21 +76,21 @@ export default () => {
       // external: ['wrtc', 'imap'],
       treeshake: true,
     },
-    // {
-    //   input: './src/daemon.ts',
-    //   output: {
-    //     file: 'dist/daemon.js',
-    //     format: 'cjs'
-    //   },
-    //   plugins: [
-    //     typescript(),
-    //     resolve(),
-    //     json(),
-    //     commonjs(),
-    //   ],
-    //   // external: ['wrtc', 'imap'],
-    //   treeshake: true,
-    // },
+    {
+      input: './src/daemon.ts',
+      output: {
+        file: 'dist/daemon.js',
+        format: 'cjs'
+      },
+      plugins: [
+        typescript(),
+        resolve(),
+        json(),
+        commonjs(),
+      ],
+      // external: ['wrtc', 'imap'],
+      treeshake: true,
+    },
 
     {
       input: 'on_build_end.ts',

@@ -16,7 +16,6 @@ const logger = new Logger('[command_use.bridge]');
 
 const SOCKET_EVENT_NAME = '__command_use';
 
-type IErrorMessage = string;
 type ISendHeartbeatFn = () => void;
 type ISocketCallback = (socketResp: ISocketDataToCommandUse_Res) => void;
 
@@ -94,7 +93,7 @@ export class CommandUseBridge {
                 const sendAt = Date.now();
                 const respListener: ISocketCallback = (socketResp) => {
                     const { type, } = socketResp || {};
-                    // 通常不会执行到这
+                    // 通常不会命中下面这句
                     if (type !== 'heartbeat_ack') return;
                     // 必须是当前服务计算，否则会因为对方时间不准确导致算出异常值
                     const ackAt = Date.now();

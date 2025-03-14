@@ -1,43 +1,14 @@
-import { io } from 'socket.io-client';
-import { HttpProxyBridge, } from './controller/http_proxy.bridge';
-import { AxiosRequestBridge, } from './controller/axios_request.bridge';
-import { TigervncForwardBridge, } from './controller/tigervnc_forward.bridge';
-import { CommandUseBridge, } from './controller/command_use.bridge';
+import { startClient } from './base/start_client';
 
 
-const SOCKET_PATH = process.env.DEVICE_ID;
 const SERVER_HOST = process.env.SERVER_HOST;
+const SOCKET_PATH = process.env.DEVICE_ID;
 
 
-function start() {
+if (!SERVER_HOST) throw `SERVER_HOST(${SERVER_HOST}) 不能为空`;
+if (!SOCKET_PATH) throw `SOCKET_PATH(${SOCKET_PATH}) 不能为空`;
 
-    const socket = io(`ws://${SERVER_HOST}/${SOCKET_PATH}`, { autoConnect: true });
-
-    socket.on('connect', () => {
-        console.log('connect')
-    });
-    // 未创建通道就已经断开 socket ，需要重新执行
-    socket.on('disconnect', () => {
-        console.log('disconnect')
-    });
-    socket.on('connect_error', () => {
-        console.log('connect_error')
-    });
-
-
-    const httpController = new HttpProxyBridge();
-    httpController.useSocketIo(socket);
-
-    const axiosController = new AxiosRequestBridge();
-    axiosController.useSocketIo(socket);
-
-    const tigervncController = new TigervncForwardBridge();
-    tigervncController.useSocketIo(socket);
-
-    const commandUseBridge = new CommandUseBridge();
-    commandUseBridge.useSocketIo(socket);
-
-}
-
-
-start()
+startClient({
+    serverHost: SERVER_HOST,
+    socketPath: SOCKET_PATH,
+});

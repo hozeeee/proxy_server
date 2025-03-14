@@ -1,4 +1,10 @@
-import { HttpProxyBridge, AxiosRequestBridge, TigervncForwardBridge, CommandUseBridge } from 'forward_end';
+import {
+  HttpProxyBridge,
+  AxiosRequestBridge,
+  TigervncForwardBridge,
+  CommandUseBridge,
+  UpdateClientBridge
+} from 'forward_end';
 import deviceList from '../config/device_list.json';
 
 
@@ -9,6 +15,7 @@ interface IDeviceItem<T extends string> {
   axiosRequestController?: AxiosRequestBridge;
   tigervncForwardController?: TigervncForwardBridge;
   commandUseBridge?: CommandUseBridge;
+  updateClientBridge?: UpdateClientBridge;
   // 挂载的端口
   port: number;
 }
@@ -18,6 +25,8 @@ export type IDeviceId =
   'server_local'
   // 使用 clash 发起请求
   | 'clash'
+  // 更新客户端代码发起的连接专用
+  | 'update_test'
   /**
    * 普通的代理设备.
    */
@@ -41,4 +50,5 @@ for (const item of DEVICE_LIST) {
   item.axiosRequestController = new AxiosRequestBridge();
   item.tigervncForwardController = new TigervncForwardBridge();
   item.commandUseBridge = new CommandUseBridge();
+  item.updateClientBridge = new UpdateClientBridge();
 }

@@ -1,10 +1,12 @@
-import { Inject, Controller, Post, Query, Get } from '@midwayjs/core';
+import { Inject, Controller, Post, Query, Get, App } from '@midwayjs/core';
 import { Context } from '@midwayjs/web';
 import { getClashInfo, switchClashProxy } from '../common/clash_controller';
 import axios from 'axios';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { io } from 'socket.io-client';
+import fs from 'fs-extra';
+import { join } from 'path';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import type { Socket as SocketIoClient } from 'socket.io-client';
 import { createConnectSocket } from '../test_demo/socket_connect_to_here';
@@ -140,6 +142,19 @@ export class APIDebugController {
   @Get('/start_whistle')
   async startWhistleProxyServer() {
     startWhistleProxyServer();
+  }
+
+
+  /**
+   * 测试通过"通知指令"来更新脚本代码。
+   */
+  @Get('/script/upgrade_code')
+  async upgrade_script_code() {
+    const device = DEVICE_LIST.find(i => i.id === 'local_test');
+    const filename = join(process.cwd(), 'publish/forward_end/daemon.js'); // TODO:
+    const fileBuff = fs.readFileSync(filename);
+    const res = await device.updateClientBridge.sendClientCode(fileBuff);
+    return JSON.stringify(res);
   }
 
 
