@@ -91,25 +91,25 @@ const type = process.env.__COMMAND_TYPE;
 switch (type) {
   case 'build': {
     console.log(`[执行命令] ${buildCommand}`);
-    const res1 = execSync(buildCommand, { encoding: 'utf8' });
+    const res1 = execSync(buildCommand, { encoding: 'utf8', stdio: 'inherit', shell: true });
     // console.log(res1);
 
     console.log(`[执行命令] ${tagCommand}`);
-    const res2 = execSync(tagCommand, { encoding: 'utf8' });
+    const res2 = execSync(tagCommand, { encoding: 'utf8', stdio: 'inherit', shell: true });
     console.log(res2);
 
     console.log(`[执行命令] ${pushCommand}`);
-    const res3 = execSync(pushCommand, { encoding: 'utf8' });
+    const res3 = execSync(pushCommand, { encoding: 'utf8', stdio: 'inherit', shell: true });
     console.log(res3);
     break;
   }
 
   case 'run': {
     console.log(`[执行命令] ${pullCommand}`);
-    const res1 = execSync(pullCommand, { encoding: 'utf8' });
+    const res1 = execSync(pullCommand, { encoding: 'utf8', stdio: 'inherit', shell: true });
 
     console.log(`[执行命令] ${runCommand}`);
-    const res2 = execSync(runCommand, { encoding: 'utf8' });
+    const res2 = execSync(runCommand, { encoding: 'utf8', stdio: 'inherit', shell: true });
     break;
   }
 

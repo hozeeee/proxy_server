@@ -20,8 +20,8 @@ startDaemon(
             commandUseBridge.useSocketIo(socket);
         },
         onConnect: () => {
+            // console.log('TEST_CHILD_ENV_KEY: ', process.env[TEST_CHILD_ENV_KEY]) // TODO:debug
             // 当判定是测试的子进程，就发送成功启动的指令
-            console.log('TEST_CHILD_ENV_KEY: ', process.env[TEST_CHILD_ENV_KEY])
             if (process.env[TEST_CHILD_ENV_KEY]) sendTestSuccessOrder();
         }
     })

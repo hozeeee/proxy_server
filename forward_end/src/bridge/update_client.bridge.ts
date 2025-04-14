@@ -129,10 +129,10 @@ export class UpdateClientBridge {
 
     constructor() {
 
-        // TODO:del
-        setInterval(() => {
-            console.log('xxxxxx___1') // 改这里的数值看能不能有效
-        }, 5 * 1000)
+        // // TODO:debug
+        // setInterval(() => {
+        //     console.log('xxxxxx___1') // 改这里的数值看能不能有效
+        // }, 5 * 1000)
     }
 
 }
