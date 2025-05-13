@@ -18,6 +18,11 @@ interface IDeviceItem<T extends string> {
   updateClientBridge?: UpdateClientBridge;
   // 挂载的端口
   port: number;
+  /**
+   * 记录设备状态变化的情况，
+   * 现在只有上线和离线，主要作用是避免网络波动导致的"偶断情况"。
+   */
+  statusList?: { type: 'offline' | 'online'; time: number; timeText: string; }[];
 }
 
 export type IDeviceId =
@@ -32,6 +37,16 @@ export type IDeviceId =
    */
   | 'local_test'
   | 'n2840';
+
+
+/**
+ * 为了避免网络波动导致的"快速触发上线/离线提醒"，
+ * 设备离线后等待若干时间再发送提醒，
+ * 如果期间设备重新连接，则不发送提醒。
+ * 增加定期发送所有设备状态的通知。
+ */
+export const OFFLINE_NOTIFICATION_TIMEOUT = 3 * 1000;
+export const offlineNotificationTimerMap = new Map<IDeviceId, NodeJS.Timer>();
 
 
 /**

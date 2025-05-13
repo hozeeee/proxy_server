@@ -1,0 +1,19 @@
+# Unit 介绍本单元的基本信息（即元数据）
+[Unit] 
+Description=hwy_ddns_update.service
+# After=network.target 
+
+# Service 用来定制行为 (*.service 特有) 
+[Service] 
+Type=simple 
+User=root
+Group=root
+Restart=always
+Environment=UPDATE_TYPES=ipv6.fhz920p
+WorkingDirectory=/etc/systemd/system
+ExecStart=/etc/node-v18.13.0/bin/node /root/index.js
+
+# Install 定义开机自启动(systemctl enable)和关闭开机自启动(systemctl disable)这个单元时，所要执行的命令
+[Install] 
+# WantedBy=multi-user.target
+WantedBy=network-online.target
