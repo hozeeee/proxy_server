@@ -1,0 +1,23 @@
+[
+  {
+    "name": "A香港 02",
+    "port": 8690,
+    "socks-port": 38690,
+    "redir-port": 48690,
+    "external-controller": 59090
+  },
+  {
+    "name": "B美国 02",
+    "port": 8691,
+    "socks-port": 38691,
+    "redir-port": 48691,
+    "external-controller": 59091
+  },
+  {
+    "name": "C日本 02",
+    "port": 8692,
+    "socks-port": 38692,
+    "redir-port": 48692,
+    "external-controller": 59092
+  }
+]

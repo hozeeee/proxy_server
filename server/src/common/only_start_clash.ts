@@ -1,4 +1,4 @@
-import { startClash } from './clash_controller';
+import { startAllClashServers } from './clash_controller';
 
 /**
  * 由于目前没有解决 clash 在容器运行的问题。
@@ -8,5 +8,5 @@ import { startClash } from './clash_controller';
 
 
 // 避免本地调试时也运行
-if (process.env.NODE_ENV !== 'local') startClash();
+if (process.env.NODE_ENV !== 'local') startAllClashServers();
 

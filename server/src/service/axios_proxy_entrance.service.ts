@@ -5,7 +5,6 @@ import axios, { type AxiosInstance } from 'axios';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { DEVICE_LIST, type IDeviceId } from '../common/device_config';
-import { CLASH_HTTP_PROXY_PORT } from '../config/port_config.json';
 
 
 /**
@@ -39,9 +38,10 @@ export class AxiosProxyEntranceService {
     }
 
     // 使用 clash 代理
-    if (deviceId === 'clash') {
+    if (deviceId.startsWith('clash_')) {
+      const serverPort = Number(deviceId.replace('clash_', ''));
       if (!clashAxios) {
-        const proxyURL = `http://127.0.0.1:${CLASH_HTTP_PROXY_PORT}`;  // 测试用本服务代理
+        const proxyURL = `http://127.0.0.1:${serverPort}`;  // 测试用本服务代理
         const httpAgent = new HttpProxyAgent(proxyURL);
         const httpsAgent = new HttpsProxyAgent(proxyURL);
         clashAxios = axios.create();

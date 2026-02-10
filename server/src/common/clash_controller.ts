@@ -1,28 +1,19 @@
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import { join } from 'path';
 import fs from 'fs-extra';
 import axios from 'axios';
 import { stringify } from 'query-string';
 import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
-import { CLASH_HTTP_PROXY_PORT, CLASH_SOCKS_PROXY_PORT } from '../config/port_config.json';
+import configList from '../config/clash.config.json';
 
 
+const CLASH_CONFIG_URL = 'https://39056.subxiandan.top:9604/ssp/cave/link/ZWwakjF4eVPCHwcg?clash=1';
 const CLASH_DIR = join(__dirname, '../../clash');
 const CLASH_CONFIG_FILENAME = 'clash_config.yaml';
-const CLASH_RUN_FILENAME = 'clash-linux-amd64-v1.18.0';
+const CLASH_RUN_FILENAME = 'mihomo-linux-amd64-v3-alpha-dede56f'; // 'clash-linux-amd64-v1.18.0';
 const CLASH_LOG_FILENAME = 'clash.log';
 
-// 日志文件不存在需要创建
-const CLASH_LOG_FULL_FILENAME = join(CLASH_DIR, CLASH_LOG_FILENAME);
-if (!fs.existsSync(CLASH_LOG_FULL_FILENAME)) {
-  console.log(`日志文件(${CLASH_LOG_FULL_FILENAME}) 不存在，正在创建...`);
-  fs.createFileSync(CLASH_LOG_FULL_FILENAME);
-  console.log(`日志文件(${CLASH_LOG_FULL_FILENAME}) 创建成功`);
-}
 
-const clashControllerPort = 9090;
-const clashHttpProxyPort = CLASH_HTTP_PROXY_PORT;
-const clashSocksProxyPort = CLASH_SOCKS_PROXY_PORT;
 
 /**
  * 下载配置文件。
@@ -32,18 +23,12 @@ export function downloadConfig(url: string) {
   return axios({ method: 'get', url, })
     .then((res) => {
       const fileContent: string = res.data;
-      // 配置解析
-      const config = yamlLoad(fileContent) as Record<string, any>;
-      // 保证配置的端口是固定的
-      config['external-controller'] = `0.0.0.0:${clashControllerPort}`;
-      config['port'] = clashHttpProxyPort;
-      config['socks-port'] = clashSocksProxyPort;
-      config['allow-lan'] = true; // 开放给其他机器
-      config['log-level'] = 'debug'; // 日志等级: info / warning / error / debug / silent
-      // 写入文件
-      const yamlStr = yamlDump(config);
-      const filePath = join(CLASH_DIR, CLASH_CONFIG_FILENAME)
-      fs.writeFileSync(filePath, yamlStr);
+      // // 配置解析
+      // const config = yamlLoad(fileContent) as Record<string, any>;
+      // const yamlStr = yamlDump(config);
+      const filePath = join(CLASH_DIR, CLASH_CONFIG_FILENAME);
+      // fs.writeFileSync(filePath, yamlStr);
+      fs.writeFileSync(filePath, fileContent);
     })
     .catch((err) => {
       console.error(`clash 配置文件下载失败: ${err}`);
@@ -52,23 +37,69 @@ export function downloadConfig(url: string) {
 }
 
 
+
+/**
+ * 根据基础的配置文件，生成多个端口的配置文件。
+ */
+function generateMultiPortConfigFiles() {
+  const baseFilePath = join(CLASH_DIR, CLASH_CONFIG_FILENAME);
+  if (!fs.existsSync(baseFilePath)) {
+    console.error(`基础配置文件(${baseFilePath}) 不存在，无法生成多端口配置文件`);
+    return;
+  }
+  const fileContent = fs.readFileSync(baseFilePath, 'utf8');
+  const baseConfig = yamlLoad(fileContent) as Record<string, any>;
+  for (const portConfig of configList) {
+    const config = { ...baseConfig };
+    // 保证配置的端口是固定的
+    config['external-controller'] = `0.0.0.0:${portConfig['external-controller']}`;
+    config['port'] = portConfig.port;
+    config['socks-port'] = portConfig['socks-port'];
+    config['redirect-port'] = portConfig['redirect-port'];
+    config['allow-lan'] = true; // 开放给其他机器
+    config['log-level'] = 'debug'; // 日志等级: info / warning / error / debug / silent
+    // 写入文件
+    const yamlStr = yamlDump(config);
+    const filePath = join(CLASH_DIR, CLASH_CONFIG_FILENAME.replace('.yaml', `_${portConfig.port}.yaml`));
+    fs.writeFileSync(filePath, yamlStr);
+  }
+}
+
 /**
  * 判断是否已经运行了 clash 服务。
  */
-export function isRunningClash() {
+export function isRunningClash(port: number) {
   try {
+    // 清除因 "pm2 delete" 未删除导致的残留
+    spawnSync('pm2 save --force');
     const pm2ListRes = execSync('pm2 list', { encoding: 'utf8' });
-    if (pm2ListRes.includes(CLASH_RUN_FILENAME)) {
-      // "残留"忽略
-      const warningTxt = `[PM2][WARN] Current process list is not synchronized with saved list. App clash-linux-amd64-v1.18.0 differs. Type 'pm2 save' to synchronize.`;
-      if (pm2ListRes.includes(warningTxt)) {
-        return false;
-      }
+    const name = getClashPm2Name(port);
+    if (pm2ListRes.includes(name)) {
       return true;
     }
   } catch (_) { }
   return false;
 }
+
+/**
+ * 测试延迟。
+ */
+export async function checkClashNode(port: number, targetUrl = 'http://www.gstatic.com/generate_204'): Promise<{ delay?: number; error?: string }> {
+  try {
+    const config = configList.find(i => i.port === port);
+    const res = await axios.get(
+      `http://127.0.0.1:${config['external-controller']}/proxies/${encodeURIComponent(config.name)}/delay`,
+      {
+        params: { url: targetUrl, timeout: 5000 },
+        timeout: 6000,
+      }
+    );
+    return res.data;
+  } catch (err) {
+    return { error: `非预期错误: ${err}` };
+  }
+}
+
 
 /**
  * 判断配置文件是否存在。
@@ -85,23 +116,36 @@ async function isConfigFileExists() {
 /**
  * 启动 clash 服务。
  */
-export async function startClash() {
+export async function startClash(port: number) {
   try {
     // 配置文件下载
     const exists = await isConfigFileExists();
     if (exists) console.log('clash 配置文件已存在');
     else {
-      await downloadConfig(process.env.CLASH_CONFIG_URL);
+      await downloadConfig(CLASH_CONFIG_URL || process.env.CLASH_CONFIG_URL);
     }
+    generateMultiPortConfigFiles();
 
     // 启动
-    const isRunning = isRunningClash();
-    if (isRunning) console.log('clash 已启动');
+    const isRunning = isRunningClash(port);
+    if (isRunning) console.log(`clash 已启动: ${port}`);
     else {
-      const command = `pm2 start ${join(CLASH_DIR, CLASH_RUN_FILENAME)} --log ${CLASH_LOG_FULL_FILENAME} --name ${CLASH_RUN_FILENAME} -- -f ${join(CLASH_DIR, CLASH_CONFIG_FILENAME)}`;
-      console.log(`运行命令: ${command}`)
+      const name = getClashPm2Name(port);
+      const file = join(CLASH_DIR, CLASH_CONFIG_FILENAME.replace('.yaml', `_${port}.yaml`));
+
+      let logFileName = CLASH_LOG_FILENAME.replace('.log', `_${port}.log`);
+      // 日志文件不存在需要创建
+      logFileName = join(CLASH_DIR, logFileName);
+      if (!fs.existsSync(logFileName)) {
+        console.log(`日志文件(${logFileName}) 不存在，正在创建...`);
+        fs.createFileSync(logFileName);
+        console.log(`日志文件(${logFileName}) 创建成功`);
+      }
+
+      const command = `pm2 start ${join(CLASH_DIR, CLASH_RUN_FILENAME)} --log ${logFileName} --name ${name} -- -f ${file}`;
+      // console.log(`运行命令: ${command}`)
       execSync(command);
-      console.log('clash 启动成功');
+      console.log(`clash 启动成功: ${port}`);
     }
 
     /**
@@ -117,23 +161,34 @@ export async function startClash() {
     const SWITCH_INTERVAL = 2 * 1000;
     while (_count > 0) {
       _count--;
+      const config = configList.find(i => i.port === port);
       try {
-        const PROXY_NODE_NAME = 'B美国 02';
-        const success = await switchClashProxy(PROXY_NODE_NAME);
+        const success = await switchClashProxy(port, config.name);
         if (success) {
-          console.log(`clash 节点切换成功: ${PROXY_NODE_NAME}`);
+          console.log(`clash 节点切换成功: ${config.name}`);
           _count = -1;
           continue;
         }
       } catch (err: any) { }
-      console.error(`clash 节点切换失败(${_count})`);
+      console.error(`clash 节点切换失败(${_count}): ${config.name}`);
       await new Promise((resolve) => setTimeout(resolve, SWITCH_INTERVAL));
     }
 
-    return isRunningClash();
+    return isRunningClash(port);
   } catch (_) {
     return false;
   }
+}
+export async function startAllClashServers() {
+  for (const config of configList) {
+    const port = config.port;
+    await startClash(port);
+  }
+}
+
+
+function getClashPm2Name(port: number) {
+  return `${CLASH_RUN_FILENAME}__${port}`;
 }
 
 
@@ -162,9 +217,10 @@ export async function startClash() {
  *   URL   -> ...
  */
 type IInfoType = 'logs' | 'traffic' | 'version' | 'configs' | 'proxies' | 'rules' | 'connections' | 'proxies' | 'dns/query';
-export async function getClashInfo(type: IInfoType, dnsName?: string, dnsType?: 'A' | 'AAAA' | 'CNAME') {
-  const isRunning = isRunningClash();
-  if (!isRunning) return null;
+export async function getClashInfo(port: number, type: IInfoType, dnsName?: string, dnsType?: 'A' | 'AAAA' | 'CNAME') {
+  const isRunning = isRunningClash(port);
+  const config = configList.find(i => i.port === port);
+  if (!isRunning || !config) return null;
 
   /**
    * TODO: 实测记录
@@ -173,7 +229,7 @@ export async function getClashInfo(type: IInfoType, dnsName?: string, dnsType?: 
    */
 
   const dnsSearch = type === 'dns/query' ? `?${stringify({ name: dnsName, type: dnsType })}` : '';
-  const url = `http://127.0.0.1:${clashControllerPort}/${type}${dnsSearch}`;
+  const url = `http://127.0.0.1:${config['external-controller']}/${type}${dnsSearch}`;
 
   try {
     const res = await axios<Record<string, any>>({ method: 'get', url, });
@@ -188,9 +244,10 @@ export async function getClashInfo(type: IInfoType, dnsName?: string, dnsType?: 
 /**
  * 切换 Selector 中选中的节点。
  */
-export async function switchClashProxy(name: string, group = '🔰国外流量') {
+export async function switchClashProxy(port: number, name: string, group = '🔰国外流量') {
+  const config = configList.find(i => i.port === port);
   group = encodeURIComponent(group);
-  const url = `http://127.0.0.1:${clashControllerPort}/proxies/${group}`;
+  const url = `http://127.0.0.1:${config['external-controller']}/proxies/${group}`;
 
   try {
     const res = await axios.put<string>(url, { name });
@@ -205,8 +262,9 @@ export async function switchClashProxy(name: string, group = '🔰国外流量')
 /**
  * 关闭特定(或所有)连接。
  */
-export async function closeClashConnection(id?: string) {
-  const url = `http://127.0.0.1:${clashControllerPort}/connections${id ? '/' + id : ''}`;
+export async function closeClashConnection(port: number, id?: string) {
+  const config = configList.find(i => i.port === port);
+  const url = `http://127.0.0.1:${config['external-controller']}/connections${id ? '/' + id : ''}`;
 
   try {
     const res = await axios<string>({ method: 'delete', url, });

@@ -1,6 +1,6 @@
 import { WSController, OnWSConnection, Inject, OnWSMessage, OnWSDisConnection, App, } from '@midwayjs/decorator';
 import { Context, Application as SocketApplication } from '@midwayjs/socketio';
-import { NotificationService } from '../service/notification.service';
+import { onDeviceOffline, onDeviceOnline, onNormalError } from '../service/notification.service';
 import type { IDeviceId } from '../common/device_config';
 import { DEVICE_LIST } from '../common/device_config';
 /* 勿删! 勿改! 用于匹配头部生成新 controller 文件。上面内容都会被作用于新文件。 */
@@ -21,8 +21,6 @@ export class ForwardEndDeviceSocketController {
   ctx: Context;
   @App('socketIO')
   socketApp: SocketApplication;
-  @Inject()
-  notificationService: NotificationService;
 
 
 
@@ -31,12 +29,12 @@ export class ForwardEndDeviceSocketController {
     const deviceId = 'local_test' as IDeviceId;
     const deviceConfig = DEVICE_LIST.find(i => i.id === deviceId);
     if (!deviceConfig) {
-      this.notificationService.onNormalError(`在 onConnectionMethod 找不到 ${deviceId} 设备 ID 的配置`);
+      onNormalError(`在 onConnectionMethod 找不到 ${deviceId} 设备 ID 的配置`);
       return;
     }
     const ws = Array.from(this.socketApp.of(`/${deviceId}`).sockets.values())[0];
     if (!ws) {
-      this.notificationService.onNormalError(`在 onConnectionMethod 找不到 ${deviceId} 设备 ID 的 socket`);
+      onNormalError(`在 onConnectionMethod 找不到 ${deviceId} 设备 ID 的 socket`);
       return;
     }
 
@@ -49,7 +47,7 @@ export class ForwardEndDeviceSocketController {
      * 设备上线通知。
      * (测试连接的不需要提醒通知)
      */
-    this.notificationService.onDeviceOnline(deviceId);
+    onDeviceOnline(deviceId);
     /**
      * "代理转发"绑定通道。
      */
@@ -69,14 +67,14 @@ export class ForwardEndDeviceSocketController {
     const deviceId = 'local_test' as IDeviceId;
     const deviceConfig = DEVICE_LIST.find(i => i.id === deviceId);
     if (!deviceConfig) {
-      this.notificationService.onNormalError(`在 onDisConnectionMethod 找不到 ${deviceId} 设备 ID 的配置`);
+      onNormalError(`在 onDisConnectionMethod 找不到 ${deviceId} 设备 ID 的配置`);
       return;
     }
 
     /**
      * 设备离线通知
      */
-    this.notificationService.onDeviceOffline(deviceId);
+    onDeviceOffline(deviceId);
     /**
      * "代理转发"销毁。
      */

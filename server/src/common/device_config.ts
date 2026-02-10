@@ -29,7 +29,7 @@ export type IDeviceId =
   // 使用本服务发起请求
   'server_local'
   // 使用 clash 发起请求
-  | 'clash'
+  | `clash_${number}`
   // 更新客户端代码发起的连接专用
   | 'update_test'
   /**

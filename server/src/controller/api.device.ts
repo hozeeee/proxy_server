@@ -17,7 +17,7 @@ export class APIDeviceController {
 
   @Get('/list')
   async getList(): Promise<any[]> {
-    return this.deviceManageService.getList();
+    return await this.deviceManageService.getList();
   }
 
 

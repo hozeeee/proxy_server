@@ -5,7 +5,7 @@ import * as staticFile from '@midwayjs/static-file';
 import { HttpProxyEntranceService, startWhistleProxyServer } from './service/http_proxy_entrance.service';
 import { NativeWsService } from './service/native_ws.service';
 import * as socketio from '@midwayjs/socketio';
-import { downloadConfig, startClash } from './common/clash_controller';
+import { downloadConfig, startAllClashServers, startClash } from './common/clash_controller';
 
 // TODO: 关于 chii 脚本注入的功能，暂时不可用
 // import { GetDomainMiddleware } from './middleware/get_domain.middleware';
@@ -36,7 +36,7 @@ export class MainConfiguration implements ILifeCycle {
 
     if (this.app.config.env === 'local') return; /******** 调试分割线(下面正式代码，本地调试不会执行) ********/
 
-    startClash();
+    startAllClashServers();
     // restoreChiiConfigFromCacheFile();
     // startChiiServer();
     // copyErudaToPublish();

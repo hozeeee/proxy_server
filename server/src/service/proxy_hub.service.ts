@@ -9,8 +9,8 @@ import type { Duplex } from 'stream';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { SocksClient } from 'socks';
 import { DEVICE_LIST, type IDeviceId } from '../common/device_config';
-import { CLASH_SOCKS_PROXY_PORT } from '../config/port_config.json';
 import { DeviceManageService } from './device_manage.service';
+import clashConfigList from '../config/clash.config.json';
 
 
 /**
@@ -84,10 +84,12 @@ export class ProxyHubService {
     /**
      * 使用 clash 代理。
      */
-    const isUseClash = deviceId === 'clash';
+    const isUseClash = deviceId.startsWith('clash_');
     if (isUseClash) {
+      const serverPort = Number(deviceId.replace('clash_', ''));
+      const clashConfig = clashConfigList.find(i => i.port === serverPort);
       SocksClient.createConnection({
-        proxy: { host: '127.0.0.1', port: CLASH_SOCKS_PROXY_PORT, type: 5, /* SOCKS v5 */ },
+        proxy: { host: '127.0.0.1', port: clashConfig['socks-port'], type: 5, /* SOCKS v5 */ },
         command: 'connect',
         destination: { host: hostname, port, },
       }, (err, info) => {
@@ -177,11 +179,13 @@ export class ProxyHubService {
     /**
      * 使用 clash 代理。
      */
-    const isUseClash = deviceId === 'clash';
+    const isUseClash = deviceId.startsWith('clash_');
     if (isUseClash) {
+      const serverPort = Number(deviceId.replace('clash_', ''));
+      const clashConfig = clashConfigList.find(i => i.port === serverPort);
       const _options: RequestOptions = {
         ...options,
-        agent: new SocksProxyAgent(`socks5h://127.0.0.1:${CLASH_SOCKS_PROXY_PORT}`),
+        agent: new SocksProxyAgent(`socks5h://127.0.0.1:${clashConfig}`),
       };
       const serverReq = http.request(url, _options, (proxyRes) => {
         clientRes.writeHead(proxyRes.statusCode, proxyRes.headers);

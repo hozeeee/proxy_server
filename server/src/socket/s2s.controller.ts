@@ -1,6 +1,5 @@
 import { WSController, OnWSConnection, Inject, OnWSMessage, OnWSDisConnection, App, } from '@midwayjs/decorator';
 import { Context, Application as SocketApplication } from '@midwayjs/socketio';
-import { NotificationService } from '../service/notification.service';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { type IDeviceId } from '../common/device_config';
 import { AxiosProxyEntranceService } from '../service/axios_proxy_entrance.service';
@@ -24,8 +23,6 @@ export class ServerToServerSocketController {
   ctx: Context;
   @App('socketIO')
   socketApp: SocketApplication;
-  @Inject()
-  notificationService: NotificationService;
   @Inject()
   axiosProxyEntranceService: AxiosProxyEntranceService;
 

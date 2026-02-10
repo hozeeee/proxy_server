@@ -5,6 +5,9 @@ import axios from 'axios';
 import dayjs from 'dayjs';
 import nodemailer from 'nodemailer';
 import { hostname, port, sendPath, backupEmail } from '../config/notification_server.config.json';
+import clashConfigList from '../config/clash.config.json';
+import { checkClashNode } from '../common/clash_controller';
+import { CronJob } from 'cron';
 
 
 /**
@@ -34,94 +37,143 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-@Provide()
-export class NotificationService {
 
-  /**
-   * 自动重试，避免 notification 还没启动。
-   */
-  private async send(params: { mode?: ISendMode, content: string, subject?: string }, maxRetry = 5) {
-    let success = false;
-    try {
-      success = await axios.post(NOTIFICATION_SERVER_HREF, params);
-    } catch (_) { }
-    if (success) return true;
-    maxRetry--;
-    // notification 服务不可用时，接收邮件的邮箱。
-    if (maxRetry <= 0) {
-      transporter.send({
-        from: 'fhz920p@126.com', // 发送方邮箱的账号
-        to: backupEmail, // 邮箱接受者的账号 (逗号分隔多个)
-        subject: '[代理系统] notification 服务调用失败', // 标题
-        text: '请检查 notification 服务是否正常可用',
-        html: '', // 如果设置了html内容, 将忽略text内容
-      });
-      return false;
-    }
-    else {
-      await new Promise(resolve => setTimeout(resolve, 1 * 1000));
-      return await this.send(params, maxRetry);
-    }
+/**
+ * 自动重试，避免 notification 还没启动。
+ */
+async function send(params: { mode?: ISendMode, content: string, subject?: string }, maxRetry = 5) {
+  let success = false;
+  try {
+    success = await axios.post(NOTIFICATION_SERVER_HREF, params);
+  } catch (_) { }
+  if (success) return true;
+  maxRetry--;
+  // notification 服务不可用时，接收邮件的邮箱。
+  if (maxRetry <= 0) {
+    transporter.send({
+      from: 'fhz920p@126.com', // 发送方邮箱的账号
+      to: backupEmail, // 邮箱接受者的账号 (逗号分隔多个)
+      subject: '[代理系统] notification 服务调用失败', // 标题
+      text: '请检查 notification 服务是否正常可用',
+      html: '', // 如果设置了html内容, 将忽略text内容
+    });
+    return false;
   }
+  else {
+    await new Promise(resolve => setTimeout(resolve, 1 * 1000));
+    return await send(params, maxRetry);
+  }
+}
 
 
-  /**
-   * 代理设备上线
-   */
-  onDeviceOnline(deviceId: IDeviceId) {
-    const targetDevice = DEVICE_LIST.find(i => i.id === deviceId);
-    const subject = `[代理系统] 代理设备接入系统(${targetDevice?.name})`;
-    const content = [
-      '当前所有设备情况：',
-      ...DEVICE_LIST.map((item) => ` ${item.name} | ${item.commandUseBridge?.ping || 0} ${targetDevice.name === item.name ? '[爱心]' : ''}`),
+/**
+ * 代理设备上线
+ */
+export function onDeviceOnline(deviceId: IDeviceId) {
+  const targetDevice = DEVICE_LIST.find(i => i.id === deviceId);
+  const subject = `[代理系统] 代理设备接入系统(${targetDevice?.name})`;
+  const content = [
+    '当前所有设备情况：',
+    ...DEVICE_LIST.map((item) => ` ${item.name} | ${item.commandUseBridge?.ping || 0} ${targetDevice.name === item.name ? '[爱心]' : ''}`),
+    '---------------------------------',
+    dayjs().format('YYYY-MM-DD HH:mm:ss')
+  ].join('\n');
+  // 记录状态
+  if (!targetDevice.statusList) targetDevice.statusList = [];
+  const now = Date.now();
+  targetDevice.statusList.push({ type: 'online', time: now, timeText: dayjs(now).format('YYYY-MM-DD HH:mm:ss') });
+  // 如果设备是偶发断线，不发送通知
+  const timer = offlineNotificationTimerMap.get(deviceId);
+  if (timer) {
+    offlineNotificationTimerMap.delete(deviceId);
+    clearTimeout(timer);
+    return;
+  }
+  send({ subject, content });
+}
+
+/**
+ * 代理设备离线
+ */
+export function onDeviceOffline(deviceId: IDeviceId) {
+  const targetDevice = DEVICE_LIST.find(i => i.id === deviceId);
+  const subject = `[代理系统] 代理设备离线(${targetDevice?.name})`;
+  const content = [
+    '当前所有设备情况：',
+    ...DEVICE_LIST.map((item) => ` ${item.name} | ${item.commandUseBridge?.ping || 0} ${targetDevice.name === item.name ? '[心碎]' : ''}`),
+    '---------------------------------',
+    dayjs().format('YYYY-MM-DD HH:mm:ss')
+  ].join('\n');
+  // 记录状态
+  if (!targetDevice.statusList) targetDevice.statusList = [];
+  const now = Date.now();
+  targetDevice.statusList.push({ type: 'offline', time: now, timeText: dayjs(now).format('YYYY-MM-DD HH:mm:ss') });
+  // 延迟发送，如果期间上线，则会被清掉
+  const cb = () => {
+    send({ subject, content });
+    offlineNotificationTimerMap.delete(deviceId);
+  }
+  const timer = setTimeout(cb, OFFLINE_NOTIFICATION_TIMEOUT);
+  offlineNotificationTimerMap.set(deviceId, timer);
+}
+
+
+/**
+ * 普通的错误通知
+ */
+export function onNormalError(msg: string) {
+  // TODO:
+}
+
+
+
+
+/**
+ * 定期检查所有用到的 clash 节点。
+ * 每 20 分钟检查一次。
+ * 如果异常则发送通知。
+ */
+const job = CronJob.from({
+  cronTime: '0 */20 * * * *',
+  onTick: async () => {
+    const subject = '[代理系统] clash 节点异常';
+    const content: string[] = ['clash 节点检查结果：'];
+    let hadError = false;
+    for (const config of clashConfigList) {
+      const res = await checkClashNode(config.port);
+      if (res.delay)
+        content.push(` ${config.name} | ${res.delay}`);
+      else {
+        content.push(` ${config.name} | [异常] ${res.delay}`);
+        hadError = true;
+      }
+    }
+    content.push(
       '---------------------------------',
       dayjs().format('YYYY-MM-DD HH:mm:ss')
-    ].join('\n');
-    // 记录状态
-    if (!targetDevice.statusList) targetDevice.statusList = [];
-    const now = Date.now();
-    targetDevice.statusList.push({ type: 'online', time: now, timeText: dayjs(now).format('YYYY-MM-DD HH:mm:ss') });
-    // 如果设备是偶发断线，不发送通知
-    const timer = offlineNotificationTimerMap.get(deviceId);
-    if (timer) {
-      offlineNotificationTimerMap.delete(deviceId);
-      clearTimeout(timer);
-      return;
-    }
-    this.send({ subject, content });
-  }
+    );
+    if (hadError)
+      send({ subject, content: content.join('\n') });
+  },
+  start: true, // 自动启动
+  timeZone: 'Asia/Shanghai'
+});
 
-  /**
-   * 代理设备离线
-   */
-  onDeviceOffline(deviceId: IDeviceId) {
-    const targetDevice = DEVICE_LIST.find(i => i.id === deviceId);
-    const subject = `[预约系统] 代理设备离线(${targetDevice?.name})`;
-    const content = [
-      '当前所有设备情况：',
-      ...DEVICE_LIST.map((item) => ` ${item.name} | ${item.commandUseBridge?.ping || 0} ${targetDevice.name === item.name ? '[心碎]' : ''}`),
-      '---------------------------------',
-      dayjs().format('YYYY-MM-DD HH:mm:ss')
-    ].join('\n');
-    // 记录状态
-    if (!targetDevice.statusList) targetDevice.statusList = [];
-    const now = Date.now();
-    targetDevice.statusList.push({ type: 'offline', time: now, timeText: dayjs(now).format('YYYY-MM-DD HH:mm:ss') });
-    // 延迟发送，如果期间上线，则会被清掉
-    const cb = () => {
-      this.send({ subject, content });
-      offlineNotificationTimerMap.delete(deviceId);
-    }
-    const timer = setTimeout(cb, OFFLINE_NOTIFICATION_TIMEOUT);
-    offlineNotificationTimerMap.set(deviceId, timer);
-  }
 
-  /**
-   * 定期发送所有设备的状态情况。
-  */
-  @TaskLocal('0 0 1 * * *')
-  intervalSendDeviceStatus() {
+
+/**
+ * 定期发送所有设备的状态情况。
+ */
+const job2 = CronJob.from({
+  cronTime: '0 0 1 * * *',
+  onTick: async () => {
     const subject = `[代理系统] 设备情况统计`;
+
+    const clashPings = await Promise.all(clashConfigList.map(config => ({
+      ...checkClashNode(config.port),
+      name: config.name,
+    }))) as { delay?: number; error?: string; name: string; }[];
+
     const content = [
       '当前所有设备情况：',
       ...DEVICE_LIST.map((item) => {
@@ -135,21 +187,17 @@ export class NotificationService {
         ].join('');
       }),
       '---------------------------------',
+      'clash 节点检查结果：',
+      ...clashPings.map(item => `  ${item.name} | ${item.delay ? item.delay : `[异常] ${item.error}`}`),
+      '---------------------------------',
       dayjs().format('YYYY-MM-DD HH:mm:ss')
     ].join('\n');
-    this.send({ subject, content });
-  }
+    send({ subject, content });
+  },
+  start: true, // 自动启动
+  timeZone: 'Asia/Shanghai'
+});
 
-  /**
-   * 普通的错误通知
-   */
-  onNormalError(msg: string) {
-    // TODO:
-  }
-
-
-
-}
 
 
 
