@@ -5,7 +5,8 @@ const fs = require('fs');
 // 端口
 const deviceList = require('./server/src/config/device_list.json');
 const portConfig = require('./server/src/config/port_config.json');
-const ports = Object.values(portConfig)
+const clashConfig = require('./server/src/config/clash.config.json');
+const ports = Object.values(portConfig).concat(Object.values(clashConfig).map(i => i.port));
 ports.push(...deviceList.map(i => i.port));
 const portArgs = ports.map(port => `-p ${port}:${port}`).join(' '); // `-p 8600:8600`
 
