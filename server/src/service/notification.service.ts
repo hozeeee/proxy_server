@@ -128,6 +128,23 @@ export function onNormalError(msg: string) {
 
 
 
+async function getAllClashNodesStatus() {
+  const contentList: string[] = [];
+  let hadError = false;
+  for (const config of clashConfigList) {
+    const res = await checkClashNode(config.port);
+    if (res.delay)
+      contentList.push(`${config.name} | ${res.delay}`);
+    else {
+      contentList.push(`${config.name} | [异常] ${res.error}`);
+      hadError = true;
+    }
+  }
+  return {
+    contentList,
+    hadError
+  }
+}
 /**
  * 定期检查所有用到的 clash 节点。
  * 每 20 分钟检查一次。
@@ -138,16 +155,8 @@ const job = CronJob.from({
   onTick: async () => {
     const subject = '[代理系统] clash 节点异常';
     const content: string[] = ['clash 节点检查结果：'];
-    let hadError = false;
-    for (const config of clashConfigList) {
-      const res = await checkClashNode(config.port);
-      if (res.delay)
-        content.push(` ${config.name} | ${res.delay}`);
-      else {
-        content.push(` ${config.name} | [异常] ${res.delay}`);
-        hadError = true;
-      }
-    }
+    const { contentList, hadError } = await getAllClashNodesStatus();
+    content.push(...contentList.map(i => ` ${i}`));
     content.push(
       '---------------------------------',
       dayjs().format('YYYY-MM-DD HH:mm:ss')
@@ -168,27 +177,21 @@ const job2 = CronJob.from({
   cronTime: '0 0 1 * * *',
   onTick: async () => {
     const subject = `[代理系统] 设备情况统计`;
-
-    const clashPings = await Promise.all(clashConfigList.map(config => ({
-      ...checkClashNode(config.port),
-      name: config.name,
-    }))) as { delay?: number; error?: string; name: string; }[];
-
+    const { contentList: clashStatusList } = await getAllClashNodesStatus();
     const content = [
       '当前所有设备情况：',
       ...DEVICE_LIST.map((item) => {
-        item.statusList = []; // 清空
-        return [
-          '  ',
-          item.name,
-          ' | ',
-          item.commandUseBridge?.ping || 0,
-          item.statusList ? `\n      当天掉线次数(${item.statusList.filter(i => i.type === 'offline').length})` : '',
+        const text = [
+          ` ${item.name} | ${item.commandUseBridge?.ping || 0}`,
+          '\n',
+          ` - 当天掉线次数(${item.statusList?.filter(i => i.type === 'offline')?.length || 'null'})`,
         ].join('');
+        item.statusList = []; // 清空
+        return text;
       }),
       '---------------------------------',
       'clash 节点检查结果：',
-      ...clashPings.map(item => `  ${item.name} | ${item.delay ? item.delay : `[异常] ${item.error}`}`),
+      ...clashStatusList.map(i => ` ${i}`),
       '---------------------------------',
       dayjs().format('YYYY-MM-DD HH:mm:ss')
     ].join('\n');
