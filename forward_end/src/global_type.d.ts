@@ -63,7 +63,7 @@ declare global {
 
 
   /**
-   * 转发 axios 的请求的相关类型。
+   * axios_request 的相关类型。
    */
   type ISocketDataToAxios_Req<D = any> = {
     type: 'request';
@@ -82,7 +82,7 @@ declare global {
    * 转发 tigervnc 服务的数据。
    * 控制的通道只有一条。
    * 提供 force_disconnect 来强制关闭原来的，应对特殊的边界情况。
-   * port 作为唯一标识，即一个 vnc 服务职能有一个控制端连接。
+   * port 作为唯一标识，即一个 vnc 服务只能有一个控制端连接。
    * 'client_end' 是被控制端通知控制端需要关闭连接，可能是被控制端出现问题导致的断开。
    */
   type ISocketDataToTigervncServer =
@@ -141,6 +141,18 @@ declare global {
   type ISocketDataToCommandUse_Res = {
     type: 'heartbeat_ack';
   }
+
+
+  /**
+   * port_forward 的相关类型。
+   */
+  type ISocketDataToPortForward_Req = {
+    role: 'source_end' | 'server' | 'forward_end';
+    // TODO:
+    type: '';
+    data: Buffer;
+  };
+  type ISocketDataToPortForward_Res = ISocketDataToAxios_Res;
 
 }
 

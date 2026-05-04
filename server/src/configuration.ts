@@ -40,7 +40,7 @@ export class MainConfiguration implements ILifeCycle {
     // restoreChiiConfigFromCacheFile();
     // startChiiServer();
     // copyErudaToPublish();
-    startWhistleProxyServer();
+    // startWhistleProxyServer();
 
 
   }

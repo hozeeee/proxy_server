@@ -23,3 +23,4 @@ clash-core 已经很久没更新了，也比较过时。现在换成 mihomo 。
 
 仓库: https://github.com/MetaCubeX/mihomo 。
 文档: https://wiki.metacubex.one 。
+控制器UI: https://metacubexd.pages.dev 。

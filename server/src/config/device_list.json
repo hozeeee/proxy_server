@@ -7,5 +7,5 @@
   { "id": "j1800_xinyi", "name": "信宜工控机", "port": 8615 },
   { "id": "j1800_my", "name": "我的工控机", "port": 8616 },
   { "id": "other_1", "name": "其他1", "port": 8620 },
-  { "id": "update_test", "name": "更新测试连接专用", "port": 8640 }
+  { "id": "update_test", "name": "更新测试连接专用", "port": 8621 }
 ]

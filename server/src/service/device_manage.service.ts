@@ -43,14 +43,14 @@ export class DeviceManageService {
     });
     // clash
     for (const item of clashConfigList) {
-      const testRes = await checkClashNode(item.port);
+      // const testRes = await checkClashNode(item.port);
       const id = `clash_${item.port}` as const;
       list.push({
         id,
         name: `clash (${item.name})`,
         usable: this.checkDeviceUsable(id),
         port: item.port,
-        ping: Number(testRes.delay ?? 0),
+        ping: 0, // Number(testRes.delay ?? 0),
         pingUpdateAt: 0,
       });
     }
