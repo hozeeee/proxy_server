@@ -1,4 +1,4 @@
-import { execSync, spawnSync } from 'child_process';
+import { execSync } from 'child_process';
 import { join } from 'path';
 import fs from 'fs-extra';
 import axios from 'axios';
@@ -13,10 +13,29 @@ const CLASH_CONFIG_FILENAME = 'clash_config.yaml';
 const CLASH_RUN_FILENAME = 'mihomo-linux-amd64-v3-alpha-dede56f'; // 'clash-linux-amd64-v1.18.0';
 const CLASH_LOG_FILENAME = 'clash.log';
 
+/**
+ * 并行启动时的配置文件下载锁，避免多个实例同时下载同一份配置。
+ */
+let _configDownloadPromise: Promise<void> | null = null;
+async function ensureConfigDownloaded() {
+  const exists = await isConfigFileExists();
+  if (exists) {
+    console.log('clash 配置文件已存在');
+    return;
+  }
+  if (!_configDownloadPromise) {
+    _configDownloadPromise = downloadConfig(CLASH_CONFIG_URL || process.env.CLASH_CONFIG_URL);
+  }
+  await _configDownloadPromise;
+}
+
 
 
 /**
  * 下载配置文件。
+ * 踩坑记录:
+ *   1. 这里可能会在容器下载失败(网络环境不一样)
+ *   2. 也要注意清理 server/clash 目录下的"衍生".yaml 文件
  */
 export function downloadConfig(url: string) {
   console.log(`clash 配置地址: ${url}`);
@@ -58,6 +77,7 @@ function generateMultiPortConfigFiles() {
     config['redirect-port'] = portConfig['redirect-port'];
     config['allow-lan'] = true; // 开放给其他机器
     config['log-level'] = 'debug'; // 日志等级: info / warning / error / debug / silent
+    // config['mode'] = 'global'; // 全局模式
     // 写入文件
     const yamlStr = yamlDump(config);
     const filePath = join(CLASH_DIR, CLASH_CONFIG_FILENAME.replace('.yaml', `_${portConfig.port}.yaml`));
@@ -70,8 +90,6 @@ function generateMultiPortConfigFiles() {
  */
 export function isRunningClash(port: number) {
   try {
-    // 清除因 "pm2 delete" 未删除导致的残留
-    spawnSync('pm2 save --force');
     const pm2ListRes = execSync('pm2 list', { encoding: 'utf8' });
     const name = getClashPm2Name(port);
     if (pm2ListRes.includes(name)) {
@@ -116,15 +134,13 @@ async function isConfigFileExists() {
 /**
  * 启动 clash 服务。
  */
-export async function startClash(port: number) {
+export async function startClash(port: number, options?: { skipGenerateConfig?: boolean }) {
   try {
-    // 配置文件下载
-    const exists = await isConfigFileExists();
-    if (exists) console.log('clash 配置文件已存在');
-    else {
-      await downloadConfig(CLASH_CONFIG_URL || process.env.CLASH_CONFIG_URL);
+    // 配置文件下载（并行启动时通过 Promise 去重，避免多个实例同时下载）
+    await ensureConfigDownloaded();
+    if (!options?.skipGenerateConfig) {
+      generateMultiPortConfigFiles();
     }
-    generateMultiPortConfigFiles();
 
     // 启动
     const isRunning = isRunningClash(port);
@@ -157,13 +173,14 @@ export async function startClash(port: number) {
      * 上面是 clash 的运行日志，其中 "127.0.0.1:443" 说的是我们的请求被转发到本地的 443 端口上，其实就是命中了其中一条规则，就是转发到 443 导致。
      * 切换节点即可。
      */
-    let _count = 5;
-    const SWITCH_INTERVAL = 2 * 1000;
+    let _count = 3;
+    const SWITCH_INTERVAL = 1 * 1000;
     while (_count > 0) {
       _count--;
       const config = configList.find(i => i.port === port);
       try {
-        const success = await switchClashProxy(port, config.name);
+        const success = await switchClashProxy(port, config.name, 'GLOBAL');
+        // const success = await switchClashProxy(port, config.name);
         if (success) {
           console.log(`clash 节点切换成功: ${config.name}`);
           _count = -1;
@@ -180,9 +197,21 @@ export async function startClash(port: number) {
   }
 }
 export async function startAllClashServers() {
-  for (const config of configList) {
-    const port = config.port;
-    await startClash(port);
+  // 预先生成所有端口的配置文件，避免在循环中重复生成 (15×15=225次 → 仅15次)
+  generateMultiPortConfigFiles();
+
+  // 并行启动所有 clash 实例，大幅缩短总启动时间
+  const results = await Promise.allSettled(
+    configList.map((config) => startClash(config.port, { skipGenerateConfig: true }))
+  );
+
+  // 输出各实例启动结果
+  for (let i = 0; i < configList.length; i++) {
+    const result = results[i];
+    const port = configList[i].port;
+    if (result.status === 'rejected') {
+      console.error(`clash 启动异常 (port=${port}): ${result.reason}`);
+    }
   }
 }
 
