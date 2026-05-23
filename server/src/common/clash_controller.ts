@@ -77,7 +77,7 @@ function generateMultiPortConfigFiles() {
     config['redirect-port'] = portConfig['redirect-port'];
     config['allow-lan'] = true; // 开放给其他机器
     config['log-level'] = 'debug'; // 日志等级: info / warning / error / debug / silent
-    // config['mode'] = 'global'; // 全局模式
+    config['mode'] = 'global'; // 全局模式
     // 写入文件
     const yamlStr = yamlDump(config);
     const filePath = join(CLASH_DIR, CLASH_CONFIG_FILENAME.replace('.yaml', `_${portConfig.port}.yaml`));

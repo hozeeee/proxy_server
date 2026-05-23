@@ -40,6 +40,16 @@ RUN npm i chii -g
 RUN npm config set registry=https://registry.npm.taobao.org
 
 
+# 预下载 mihomo 所需的 GeoIP/GeoSite 数据库
+# 避免容器内首次启动时因网络问题导致下载超时（可能是30分钟延迟的根因）
+RUN mkdir -p /mihomo_geodata \
+  && curl -fSL -o /mihomo_geodata/geoip.metadb \
+    https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb \
+  && curl -fSL -o /mihomo_geodata/geosite.dat \
+    https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat \
+  && echo "GeoIP/GeoSite 数据库下载完成" \
+  && ls -lh /mihomo_geodata/
+
 # 安装项目依赖
 RUN npm i \
   && npm run build
