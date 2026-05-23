@@ -20,7 +20,8 @@
     "docker:run": "__COMMAND_TYPE=run node ./command.js",
     "docker:print-build": "__COMMAND_TYPE=print-build LOCAL_DOCKER_REGISTRY=127.0.0.1:5000 node ./command.js",
     "docker:print-run": "__COMMAND_TYPE=print-run node ./command.js",
-    "create-nginx-config": "__COMMAND_TYPE=create-nginx-config node ./command.js"
+    "create-nginx-config": "__COMMAND_TYPE=create-nginx-config node ./command.js",
+    "download:mihomo-geodata": "node scripts/download_mihomo_geodata.js"
   },
   "keywords": [],
   "author": "",

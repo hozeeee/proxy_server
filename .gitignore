@@ -4,3 +4,6 @@ server_cache_files/
 
 nginx_stream.conf
 
+# mihomo GeoIP/GeoSite 数据库 (通过 npm run download:mihomo-geodata 下载)
+mihomo_geodata/
+
