@@ -5,8 +5,7 @@ import axios from 'axios';
 import dayjs from 'dayjs';
 import nodemailer from 'nodemailer';
 import { hostname, port, sendPath, backupEmail } from '../config/notification_server.config.json';
-import clashConfigList from '../config/clash.config.json';
-import { checkClashNode } from '../common/clash_controller';
+import { checkClashNode, getFlatClashConfigList } from '../common/clash_controller';
 import { CronJob } from 'cron';
 
 
@@ -131,7 +130,7 @@ export function onNormalError(msg: string) {
 async function getAllClashNodesStatus() {
   const contentList: string[] = [];
   let hadError = false;
-  for (const config of clashConfigList) {
+  for (const config of getFlatClashConfigList()) {
     const res = await checkClashNode(config.port);
     if (res.delay)
       contentList.push(`${config.name} | ${res.delay}`);

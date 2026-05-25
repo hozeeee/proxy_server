@@ -10,7 +10,7 @@ import { SocksProxyAgent } from 'socks-proxy-agent';
 import { SocksClient } from 'socks';
 import { DEVICE_LIST, type IDeviceId } from '../common/device_config';
 import { DeviceManageService } from './device_manage.service';
-import clashConfigList from '../config/clash.config.json';
+import { getFlatClashConfigList } from '../common/clash_controller';
 
 
 /**
@@ -87,7 +87,7 @@ export class ProxyHubService {
     const isUseClash = deviceId.startsWith('clash_');
     if (isUseClash) {
       const serverPort = Number(deviceId.replace('clash_', ''));
-      const clashConfig = clashConfigList.find(i => i.port === serverPort);
+      const clashConfig = getFlatClashConfigList().find(i => i.port === serverPort);
       SocksClient.createConnection({
         proxy: { host: '127.0.0.1', port: clashConfig['socks-port'], type: 5, /* SOCKS v5 */ },
         command: 'connect',
@@ -182,7 +182,7 @@ export class ProxyHubService {
     const isUseClash = deviceId.startsWith('clash_');
     if (isUseClash) {
       const serverPort = Number(deviceId.replace('clash_', ''));
-      const clashConfig = clashConfigList.find(i => i.port === serverPort);
+      const clashConfig = getFlatClashConfigList().find(i => i.port === serverPort);
       const _options: RequestOptions = {
         ...options,
         agent: new SocksProxyAgent(`socks5h://127.0.0.1:${clashConfig}`),

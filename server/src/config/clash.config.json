@@ -1,107 +1,41 @@
 [
   {
-    "name": "A香港 01",
-    "port": 8630,
-    "socks-port": 38630,
-    "redir-port": 48630,
-    "external-controller": 59030
+    "groupId": "v2free",
+    "group": "v2free",
+    "configUrl": "./static/v2free_clash_config.yaml",
+    "children": [
+      { "name": "🇹🇼 台湾2-VIP88a", "port": 8650, "socks-port": 38650, "redir-port": 48650, "external-controller": 59050 },
+      { "name": "🇹🇼 台湾3-VIP88a", "port": 8651, "socks-port": 38651, "redir-port": 48651, "external-controller": 59051 },
+      { "name": "🇸🇬 新加坡1-VIP88a", "port": 8652, "socks-port": 38652, "redir-port": 48652, "external-controller": 59052 },
+      { "name": "🇸🇬 新加坡2-VIP88a", "port": 8653, "socks-port": 38653, "redir-port": 48653, "external-controller": 59053 },
+      { "name": "🇯🇵 日本1-VIP88a", "port": 8654, "socks-port": 38654, "redir-port": 48654, "external-controller": 59054 },
+      { "name": "🇯🇵 日本2-VIP88a", "port": 8655, "socks-port": 38655, "redir-port": 48655, "external-controller": 59055 },
+      { "name": "🇯🇵 日本3-VIP88a", "port": 8656, "socks-port": 38656, "redir-port": 48656, "external-controller": 59056 },
+      { "name": "🇺🇸 美国01-VIP88a", "port": 8657, "socks-port": 38657, "redir-port": 48657, "external-controller": 59057 },
+      { "name": "🇺🇸 美国02-VIP88a", "port": 8658, "socks-port": 38658, "redir-port": 48658, "external-controller": 59058 },
+      { "name": "🇺🇸 美国03-VIP88a", "port": 8659, "socks-port": 38659, "redir-port": 48659, "external-controller": 59059 }
+    ]
   },
   {
-    "name": "A香港 02",
-    "port": 8631,
-    "socks-port": 38631,
-    "redir-port": 48631,
-    "external-controller": 59031
-  },
-  {
-    "name": "A香港 03",
-    "port": 8632,
-    "socks-port": 38632,
-    "redir-port": 48632,
-    "external-controller": 59032
-  },
-  {
-    "name": "A香港 04",
-    "port": 8633,
-    "socks-port": 38633,
-    "redir-port": 48633,
-    "external-controller": 59033
-  },
-  {
-    "name": "A香港 05",
-    "port": 8634,
-    "socks-port": 38634,
-    "redir-port": 48634,
-    "external-controller": 59034
-  },
-  {
-    "name": "B美国 02",
-    "port": 8640,
-    "socks-port": 38640,
-    "redir-port": 48640,
-    "external-controller": 59040
-  },
-  {
-    "name": "B美国 03",
-    "port": 8641,
-    "socks-port": 38641,
-    "redir-port": 48641,
-    "external-controller": 59041
-  },
-  {
-    "name": "B美国 04",
-    "port": 8642,
-    "socks-port": 38642,
-    "redir-port": 48642,
-    "external-controller": 59042
-  },
-  {
-    "name": "C日本 02",
-    "port": 8643,
-    "socks-port": 38643,
-    "redir-port": 48643,
-    "external-controller": 59043
-  },
-  {
-    "name": "C日本 03",
-    "port": 8644,
-    "socks-port": 38644,
-    "redir-port": 48644,
-    "external-controller": 59044
-  },
-  {
-    "name": "C日本 04",
-    "port": 8645,
-    "socks-port": 38645,
-    "redir-port": 48645,
-    "external-controller": 59045
-  },
-  {
-    "name": "D台湾 04",
-    "port": 8646,
-    "socks-port": 38646,
-    "redir-port": 48646,
-    "external-controller": 59046
-  },
-  {
-    "name": "D台湾 05",
-    "port": 8647,
-    "socks-port": 38647,
-    "redir-port": 48647,
-    "external-controller": 59047
-  },
-  {
-    "name": "D台湾 06",
-    "port": 8648,
-    "socks-port": 38648,
-    "redir-port": 48648,
-    "external-controller": 59048
-  },
-  {
-    "name": "E新加坡 03",
-    "port": 8649,
-    "socks-port": 38649,
-    "redir-port": 48649,
-    "external-controller": 59049
+    "groupId": "ccave",
+    "group": "ccave",
+    "configUrl": "https://39056.subxiandan.top:9604/ssp/cave/link/ZWwakjF4eVPCHwcg?clash=1",
+    "children": [
+      { "name": "A香港 01", "port": 8630, "socks-port": 38630, "redir-port": 48630, "external-controller": 59030 },
+      { "name": "A香港 02", "port": 8631, "socks-port": 38631, "redir-port": 48631, "external-controller": 59031 },
+      { "name": "A香港 03", "port": 8632, "socks-port": 38632, "redir-port": 48632, "external-controller": 59032 },
+      { "name": "A香港 04", "port": 8633, "socks-port": 38633, "redir-port": 48633, "external-controller": 59033 },
+      { "name": "A香港 05", "port": 8634, "socks-port": 38634, "redir-port": 48634, "external-controller": 59034 },
+      { "name": "B美国 02", "port": 8635, "socks-port": 38635, "redir-port": 48635, "external-controller": 59035 },
+      { "name": "B美国 03", "port": 8636, "socks-port": 38636, "redir-port": 48636, "external-controller": 59036 },
+      { "name": "B美国 04", "port": 8637, "socks-port": 38637, "redir-port": 48637, "external-controller": 59037 },
+      { "name": "C日本 02", "port": 8638, "socks-port": 38638, "redir-port": 48638, "external-controller": 59038 },
+      { "name": "C日本 03", "port": 8639, "socks-port": 38639, "redir-port": 48639, "external-controller": 59039 },
+      { "name": "C日本 04", "port": 8640, "socks-port": 38640, "redir-port": 48640, "external-controller": 59040 },
+      { "name": "D台湾 04", "port": 8641, "socks-port": 38641, "redir-port": 48641, "external-controller": 59041 },
+      { "name": "D台湾 05", "port": 8642, "socks-port": 38642, "redir-port": 48642, "external-controller": 59042 },
+      { "name": "D台湾 06", "port": 8643, "socks-port": 38643, "redir-port": 48643, "external-controller": 59043 },
+      { "name": "E新加坡 03", "port": 8644, "socks-port": 38644, "redir-port": 48644, "external-controller": 59044 }
+    ]
   }
 ]

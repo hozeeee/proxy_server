@@ -3,9 +3,8 @@ import { Context, Application as SocketApplication } from '@midwayjs/socketio';
 import fs from 'fs-extra';
 import { join } from 'path';
 import { type IDeviceId, DEVICE_LIST } from '../common/device_config';
-import { isRunningClash, checkClashNode } from '../common/clash_controller';
+import { isRunningClash, checkClashNode, getFlatClashConfigList } from '../common/clash_controller';
 import { proxyServerPort } from '../config/port_config.json';
-import clashConfigList from '../config/clash.config.json';
 
 
 /**
@@ -42,7 +41,7 @@ export class DeviceManageService {
       pingUpdateAt: 0,
     });
     // clash
-    for (const item of clashConfigList) {
+    for (const item of getFlatClashConfigList()) {
       // const testRes = await checkClashNode(item.port);
       const id = `clash_${item.port}` as const;
       list.push({
