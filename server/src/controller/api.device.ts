@@ -21,6 +21,12 @@ export class APIDeviceController {
   }
 
 
+  @Get('/list_with_delay')
+  async getListWithDelay(): Promise<any[]> {
+    return await this.deviceManageService.getList(true);
+  }
+
+
   @Get('/usable')
   async checkDeviceUsable(@Query('device_id') device_id: string): Promise<boolean> {
     return !!this.deviceManageService.getDevicePort(device_id as IDeviceId);

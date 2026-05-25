@@ -22,7 +22,7 @@ export class DeviceManageService {
   /**
    * 获取所有代理设备。
    */
-  async getList() {
+  async getList(withClashDelay = false) {
     const list = DEVICE_LIST.map(item => ({
       id: item.id,
       name: item.name,
@@ -42,15 +42,15 @@ export class DeviceManageService {
     });
     // clash
     for (const item of getFlatClashConfigList()) {
-      // const testRes = await checkClashNode(item.port);
+      const testRes = withClashDelay ? await checkClashNode(item.port) : null;
       const id = `clash_${item.port}` as const;
       list.push({
         id,
         name: `clash (${item.name})`,
         usable: this.checkDeviceUsable(id),
         port: item.port,
-        ping: 0, // Number(testRes.delay ?? 0),
-        pingUpdateAt: 0,
+        ping: Number(testRes?.delay ?? 0),
+        pingUpdateAt: testRes?.delay ? Date.now() : 0,
       });
     }
     return list;

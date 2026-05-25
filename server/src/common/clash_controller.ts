@@ -32,6 +32,7 @@ const CLASH_DIR = join(process.cwd(), 'clash');
 const SERVER_DIR = process.cwd();
 const CLASH_RUN_FILENAME = 'mihomo-linux-amd64-v3-alpha-dede56f'; // 'clash-linux-amd64-v1.18.0';
 const CLASH_LOG_FILENAME = 'clash.log';
+const DEFAULT_DELAY_TEST_URL = 'https://lubansms.com'; // 'http://www.gstatic.com/generate_204';
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -266,7 +267,7 @@ export function isRunningClash(port: number) {
 /**
  * 测试延迟。
  */
-export async function checkClashNode(port: number, targetUrl = 'http://www.gstatic.com/generate_204'): Promise<{ delay?: number; error?: string }> {
+export async function checkClashNode(port: number, targetUrl = DEFAULT_DELAY_TEST_URL): Promise<{ delay?: number; error?: string }> {
   try {
     const config = findChildByPort(port);
     if (!config) return { error: `未找到 port=${port} 对应的配置` };
