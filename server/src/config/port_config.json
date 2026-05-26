@@ -3,5 +3,6 @@
   "proxyServerPort": 8609,
   "nativeWsPort": 8602,
   "chiiPort": 8698,
-  "whistleProxyPort": 8699
+  "whistleProxyPort": 8699,
+  "mcpHttpPort": 8605
 }

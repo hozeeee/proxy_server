@@ -11,6 +11,7 @@
     "@midwayjs/socketio": "^3.16.2",
     "@midwayjs/static-file": "^3.16.4",
     "@midwayjs/web": "^3.12.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "axios": "^1.7.2",
     "cron": "^4.4.0",
     "dayjs": "^1.11.13",
@@ -26,7 +27,8 @@
     "socket.io-client": "^4.7.5",
     "socks": "^2.8.3",
     "socks-proxy-agent": "^8.0.3",
-    "ws": "^8.17.1"
+    "ws": "^8.17.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@midwayjs/egg-ts-helper": "^1.0.1",
@@ -44,7 +46,7 @@
     "mwtsc": "^1.4.0",
     "ts-jest": "^29.0.3",
     "ts-node": "^10.9.2",
-    "typescript": "~4.8.0"
+    "typescript": "~5.5.0"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -60,7 +62,11 @@
     "update:my_controller": "node create_my_controller.js",
     "build": "npm run update:my_controller && mwtsc --cleanOutDir",
     "start:clash": "node ./dist/common/only_start_clash.js",
-    "update:forward_end": "npm i forward_end"
+    "update:forward_end": "npm i forward_end",
+    "mcp": "node ./dist/mcp/index.js",
+    "mcp:dev": "cross-env NODE_OPTIONS=--require=ts-node/register ts-node src/mcp/index.ts",
+    "mcp:http": "node ./dist/mcp/http.js",
+    "mcp:http:dev": "cross-env NODE_OPTIONS=--require=ts-node/register ts-node src/mcp/http.ts"
   },
   "repository": {
     "type": "git",

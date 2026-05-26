@@ -13,6 +13,10 @@ fi
 # 服务
 npm run start &
 
+# MCP HTTP 服务（监听 8605，供容器外部 AI 客户端调用）
+cd server && npm run mcp:http &
+cd ..
+
 while :; do
   sleep 100000000
 done
