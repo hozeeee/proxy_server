@@ -1,7 +1,6 @@
 import { App, Inject, Provide } from '@midwayjs/core';
 import { Application as SocketApplication } from '@midwayjs/socketio';
 import http from 'http';
-import https from 'https';
 import net from 'net';
 import { URL } from 'url';
 import type { ServerResponse, IncomingMessage, RequestOptions, } from 'http';
@@ -37,8 +36,6 @@ export class ProxyHubService {
     const isUseLocal = deviceId === 'server_local';
     if (isUseLocal) {
 
-      const { port: _port, hostname } = new URL(`http://${req.url}`);
-      const port = Number(_port || '443');
       const { httpVersion, headers } = req;
 
       const serverSocket = net.connect(port, hostname, () => {
