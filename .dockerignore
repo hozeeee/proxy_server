@@ -21,4 +21,5 @@ cache_files/
 
 # 容器内创建的目录
 server_cache_files/
+db-data/
 

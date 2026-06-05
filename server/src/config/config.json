@@ -1,0 +1,5 @@
+{
+  "database": {
+    "path": "./db-data/proxy.db"
+  }
+}

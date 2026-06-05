@@ -6,6 +6,7 @@ import { HttpProxyEntranceService, startWhistleProxyServer } from './service/htt
 import { NativeWsService } from './service/native_ws.service';
 import * as socketio from '@midwayjs/socketio';
 import { downloadConfig, startAllClashServers, startClash } from './common/clash_controller';
+import { initDatabase } from './db';
 
 // TODO: 关于 chii 脚本注入的功能，暂时不可用
 // import { GetDomainMiddleware } from './middleware/get_domain.middleware';
@@ -26,6 +27,9 @@ export class MainConfiguration implements ILifeCycle {
 
 
   async onServerReady(container: IMidwayContainer) {
+    // 初始化 SQLite 数据库（表结构 + 默认配置）
+    initDatabase();
+
     const proxyEntranceService = await container.getAsync(HttpProxyEntranceService);
     proxyEntranceService.startServers();
     // startWhistleProxyServer();

@@ -7,6 +7,7 @@ import nodemailer from 'nodemailer';
 import { hostname, port, sendPath, backupEmail } from '../config/notification_server.config.json';
 import { checkClashNode, getFlatClashConfigList } from '../common/clash_controller';
 import { CronJob } from 'cron';
+import { isClashNotifyDisabled } from './app_config.service';
 
 
 /**
@@ -152,6 +153,11 @@ async function getAllClashNodesStatus() {
 const job = CronJob.from({
   cronTime: '0 */20 * * * *',
   onTick: async () => {
+    // 检查配置：是否已关闭 clash 异常通知
+    if (isClashNotifyDisabled()) {
+      console.log('clash 异常通知已关闭（配置项 clash_notify_disabled=true），跳过本次检查');
+      return;
+    }
     const subject = '[代理系统] clash 节点异常';
     const content: string[] = ['clash 节点检查结果：'];
     const { contentList, hadError } = await getAllClashNodesStatus();

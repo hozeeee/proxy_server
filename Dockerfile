@@ -52,11 +52,9 @@ RUN npm i \
   && npm run build
 
 
-# 软链文件夹 (方便外部使用短一点的路径)
-RUN ln -sf /my_project/server/cache_files /server_cache_files
-
 # 卷映射
-VOLUME ["/server_cache_files"]
+VOLUME ["/my_project/server/cache_files"]
+VOLUME ["/my_project/server/db-data"]
 
 
 EXPOSE 8600-8699

@@ -19,8 +19,10 @@ const version = packageJson.version;
 const projectName = packageJson.name;
 
 // 映射目录 (需要在项目文件夹下运行)
+const hostPath = '/root/___sync_to_ds___/proxy_server';
 const volumeMap = {
-  '/server_cache_files': join(__dirname, 'server_cache_files'),
+  '/my_project/server/cache_files': join(hostPath, 'server/cache_files'),
+  '/my_project/server/db-data': join(hostPath, 'server/db-data'),
 };
 const volumeArgs = Object.entries(volumeMap).map(([imgPath, hostPath]) => `-v ${hostPath}:${imgPath}`).join(' ');
 

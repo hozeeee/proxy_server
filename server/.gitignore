@@ -18,3 +18,5 @@ clash/*.yaml
 clash/*.log
 publish/forward_end/
 cache_files/
+db-data/
+

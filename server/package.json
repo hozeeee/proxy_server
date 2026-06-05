@@ -13,8 +13,10 @@
     "@midwayjs/web": "^3.12.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "axios": "^1.7.2",
+    "better-sqlite3": "^11.10.0",
     "cron": "^4.4.0",
     "dayjs": "^1.11.13",
+    "drizzle-orm": "^0.45.2",
     "egg": "^2.0.0",
     "forward_end": "file:../forward_end",
     "fs-extra": "^11.2.0",
@@ -33,12 +35,14 @@
   "devDependencies": {
     "@midwayjs/egg-ts-helper": "^1.0.1",
     "@midwayjs/mock": "^3.12.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/fs-extra": "^11.0.4",
     "@types/jest": "^29.2.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "14",
     "@types/ws": "^8.5.10",
     "cross-env": "^6.0.0",
+    "drizzle-kit": "^0.24.2",
     "egg-mock": "^3.26.0",
     "eruda": "^3.4.1",
     "jest": "^29.2.2",
@@ -66,7 +70,9 @@
     "mcp": "node ./dist/mcp/index.js",
     "mcp:dev": "cross-env NODE_OPTIONS=--require=ts-node/register ts-node src/mcp/index.ts",
     "mcp:http": "node ./dist/mcp/http.js",
-    "mcp:http:dev": "cross-env NODE_OPTIONS=--require=ts-node/register ts-node src/mcp/http.ts"
+    "mcp:http:dev": "cross-env NODE_OPTIONS=--require=ts-node/register ts-node src/mcp/http.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio"
   },
   "repository": {
     "type": "git",

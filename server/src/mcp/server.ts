@@ -8,6 +8,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerDeviceTools } from './tools/device';
 import { registerClashTools } from './tools/clash';
 import { registerSystemTools } from './tools/system';
+import { registerConfigTools } from './tools/config';
 
 
 export function createMcpServer(): McpServer {
@@ -19,6 +20,7 @@ export function createMcpServer(): McpServer {
   registerDeviceTools(server);
   registerClashTools(server);
   registerSystemTools(server);
+  registerConfigTools(server);
 
   return server;
 }
