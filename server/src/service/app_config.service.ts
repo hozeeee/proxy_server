@@ -86,12 +86,12 @@ export function getAllConfigs(): Record<string, { value: any; desc: string; upda
 
 /**
  * 判断 clash 代理异常通知是否已关闭。
- * 返回 true 表示已关闭通知（不发送）。
+ * 返回 "true" 表示已关闭通知（不发送）。
  */
 export function isClashNotifyDisabled(): boolean {
   const cfg = getConfig('clash_notify_disabled');
   if (!cfg) return false;
-  return cfg.value === true;
+  return String(cfg.value) === 'true';
 }
 
 

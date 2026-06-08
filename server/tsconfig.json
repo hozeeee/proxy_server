@@ -18,6 +18,7 @@
     "resolveJsonModule": true,
     "typeRoots": ["./typings", "./node_modules/@types"],
     "outDir": "dist",
+    "rootDir": "src",
     "lib": ["ES2022", "DOM"]
   },
   "exclude": [
@@ -25,6 +26,7 @@
     "node_modules",
     "test",
     "publish",
-    "forward_end"
+    "forward_end",
+    "drizzle.config.ts"
   ]
 }

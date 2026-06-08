@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proxy Server 数据查看器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; }
+  .header { background: #16213e; color: #fff; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .header h2 { font-size: 18px; font-weight: 600; }
+  .summary-bar { display: flex; gap: 16px; padding: 16px 24px; flex-wrap: wrap; }
+  .summary-card { background: #fff; border-radius: 8px; padding: 16px 20px; flex: 1; min-width: 160px; box-shadow: 0 1px 3px rgba(0,0,0,.08); cursor: pointer; transition: box-shadow .2s; }
+  .summary-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+  .summary-card.active { border: 2px solid #0f3460; }
+  .summary-card .label { font-size: 12px; color: #888; margin-bottom: 4px; }
+  .summary-card .value { font-size: 24px; font-weight: 700; color: #0f3460; }
+  .controls { padding: 0 24px 12px; display: flex; align-items: center; gap: 12px; }
+  .controls label { font-size: 13px; color: #666; }
+  .controls input { width: 80px; padding: 6px 8px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 13px; }
+  .controls button { padding: 6px 16px; background: #0f3460; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: #16213e; }
+  .table-wrapper { padding: 0 24px 24px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); font-size: 13px; }
+  th { background: #fafafa; padding: 10px 12px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #eee; white-space: nowrap; }
+  td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  tr:hover td { background: #f7f8ff; }
+  .empty { text-align: center; padding: 40px; color: #999; }
+  .loading { text-align: center; padding: 40px; color: #0f3460; }
+  td.expandable { cursor: pointer; color: #0f3460; text-decoration: underline dotted; }
+  td.expandable:hover { background: #eef1ff; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000; justify-content: center; align-items: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: #fff; border-radius: 10px; width: 90vw; max-width: 720px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 8px 30px rgba(0,0,0,.2); }
+  .modal-header { padding: 14px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+  .modal-header h3 { font-size: 15px; color: #333; }
+  .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #999; }
+  .modal-close:hover { color: #333; }
+  .modal-body { padding: 16px 20px; overflow: auto; flex: 1; }
+  .modal-body pre { white-space: pre-wrap; word-break: break-all; font-size: 13px; line-height: 1.6; font-family: 'SF Mono', Menlo, monospace; background: #f8f9fa; padding: 12px; border-radius: 6px; }
+  .modal-actions { padding: 10px 20px; border-top: 1px solid #eee; text-align: right; }
+  .modal-actions button { padding: 6px 14px; font-size: 13px; border-radius: 4px; border: 1px solid #d9d9d9; background: #fff; cursor: pointer; margin-left: 8px; }
+  .modal-actions button:hover { border-color: #0f3460; color: #0f3460; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h2>📊 Proxy Server 数据查看器</h2>
+  <span id="refreshTime" style="font-size:12px;color:#aaa;"></span>
+</div>
+
+<div class="summary-bar" id="summaryBar">
+  <div class="loading">加载中...</div>
+</div>
+
+<div class="controls">
+  <label>显示条数：</label>
+  <input type="number" id="limitInput" value="50" min="1" max="1000">
+  <label style="margin-left:12px;"><input type="checkbox" id="autoRefreshToggle" checked onchange="toggleAutoRefresh()"> 自动刷新</label>
+  <label>间隔(秒)：</label>
+  <input type="number" id="intervalInput" value="10" min="1" max="300" style="width:60px;" onchange="resetAutoRefresh()">
+  <button onclick="loadCurrentTable()">刷新</button>
+</div>
+
+<div class="table-wrapper">
+  <div id="tableContainer" class="empty">选择上方卡片查看对应表数据</div>
+</div>
+
+<!-- 数据详情弹窗 -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="modalTitle">数据详情</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <pre id="modalContent"></pre>
+    </div>
+    <div class="modal-actions">
+      <button onclick="copyModalContent()">复制内容</button>
+      <button onclick="closeModal()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let tableList = [];   // 动态获取的表名列表
+let currentTable = null;
+let currentRows = []; // 存储当前表格数据
+
+const LONG_TEXT_THRESHOLD = 60;
+const LONG_COLUMNS = new Set(['value', 'data', 'payload', 'metadata', 'config', 'rawContent', 'rules']);
+
+// ── 数据加载 ──────────────────────────────────────────────────────────────────
+
+async function loadTables() {
+  try {
+    const res = await fetch('/api/data/tables');
+    const data = await res.json();
+    tableList = data.tables || [];
+  } catch (e) {
+    console.error('获取表列表失败:', e);
+    tableList = [];
+  }
+}
+
+async function loadSummary() {
+  try {
+    const res = await fetch('/api/data/summary');
+    const data = await res.json();
+    const bar = document.getElementById('summaryBar');
+    if (tableList.length === 0) {
+      bar.innerHTML = '<div class="empty">暂无数据表</div>';
+      return;
+    }
+    bar.innerHTML = tableList.map(name => `
+      <div class="summary-card ${currentTable === name ? 'active' : ''}" onclick="selectTable('${escapeHtml(name)}')">
+        <div class="label">${escapeHtml(name)}</div>
+        <div class="value">${data[name] ?? '-'}</div>
+      </div>
+    `).join('');
+    document.getElementById('refreshTime').textContent = '更新于 ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    console.error('加载汇总失败:', e);
+  }
+}
+
+function selectTable(name) {
+  currentTable = name;
+  loadSummary();
+  loadCurrentTable();
+}
+
+async function loadCurrentTable() {
+  if (!currentTable) return;
+  const container = document.getElementById('tableContainer');
+  container.innerHTML = '<div class="loading">加载中...</div>';
+
+  const limit = document.getElementById('limitInput').value || 50;
+
+  try {
+    const res = await fetch(`/api/data/table/${encodeURIComponent(currentTable)}?limit=${limit}`);
+    const data = await res.json();
+    if (!data.rows || data.rows.length === 0) {
+      container.innerHTML = '<div class="empty">暂无数据</div>';
+      return;
+    }
+    container.innerHTML = renderTable(data.rows);
+  } catch (e) {
+    container.innerHTML = `<div class="empty" style="color:#ff4d4f;">加载失败: ${e.message}</div>`;
+  }
+}
+
+// ── 表格渲染 ──────────────────────────────────────────────────────────────────
+
+function renderTable(rows) {
+  currentRows = rows;
+  const columns = Object.keys(rows[0]);
+  const headerHtml = columns.map(col => `<th>${escapeHtml(col)}</th>`).join('');
+  const bodyHtml = rows.map((row, rowIndex) => {
+    const cells = columns.map(col => {
+      const value = row[col];
+      const strValue = String(value ?? '');
+      const isLong = LONG_COLUMNS.has(col) || strValue.length > LONG_TEXT_THRESHOLD;
+      const display = formatCell(col, value);
+      if (isLong && value !== null && value !== undefined) {
+        return `<td class="expandable" data-row="${rowIndex}" data-column="${escapeHtml(col)}">${display}</td>`;
+      }
+      return `<td title="${escapeHtml(strValue)}">${display}</td>`;
+    }).join('');
+    return `<tr>${cells}</tr>`;
+  }).join('');
+  return `<table><thead><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table>`;
+}
+
+function formatCell(column, value) {
+  if (value === null || value === undefined) return '<span style="color:#ccc;">null</span>';
+  const strValue = String(value);
+  if (LONG_COLUMNS.has(column) || strValue.length > LONG_TEXT_THRESHOLD) {
+    const preview = strValue.substring(0, 60);
+    return `<span>${escapeHtml(preview)}${strValue.length > 60 ? '…' : ''}</span>`;
+  }
+  return escapeHtml(strValue);
+}
+
+// ── 弹窗 ──────────────────────────────────────────────────────────────────────
+
+function onCellClick(event) {
+  const td = event.target.closest('td.expandable');
+  if (!td) return;
+  const rowIndex = parseInt(td.dataset.row, 10);
+  const column = td.dataset.column;
+  const rawValue = currentRows[rowIndex]?.[column];
+  showModal(column, rawValue);
+}
+
+function showModal(column, rawValue) {
+  let formatted = String(rawValue ?? '');
+  try {
+    const parsed = JSON.parse(formatted);
+    formatted = JSON.stringify(parsed, null, 2);
+  } catch {}
+  document.getElementById('modalTitle').textContent = `字段详情 — ${column}`;
+  document.getElementById('modalContent').textContent = formatted;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function closeModal(event) {
+  if (event && event.target !== event.currentTarget) return;
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+function copyModalContent() {
+  const content = document.getElementById('modalContent').textContent;
+  navigator.clipboard.writeText(content).then(() => {
+    const btn = event.target;
+    btn.textContent = '已复制 ✓';
+    setTimeout(() => { btn.textContent = '复制内容'; }, 1500);
+  });
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = String(text);
+  return div.innerHTML;
+}
+
+// ── 自动刷新 ──────────────────────────────────────────────────────────────────
+
+let autoRefreshTimer = null;
+
+function toggleAutoRefresh() {
+  if (document.getElementById('autoRefreshToggle').checked) {
+    startAutoRefresh();
+  } else {
+    stopAutoRefresh();
+  }
+}
+
+function startAutoRefresh() {
+  stopAutoRefresh();
+  const interval = (parseInt(document.getElementById('intervalInput').value, 10) || 10) * 1000;
+  autoRefreshTimer = setInterval(() => {
+    loadSummary();
+    if (currentTable) loadCurrentTable();
+  }, interval);
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+}
+
+function resetAutoRefresh() {
+  if (document.getElementById('autoRefreshToggle').checked) {
+    startAutoRefresh();
+  }
+}
+
+// ── 事件绑定 ──────────────────────────────────────────────────────────────────
+
+document.getElementById('tableContainer').addEventListener('click', onCellClick);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') document.getElementById('modalOverlay').classList.remove('show');
+});
+
+// ── 初始化 ────────────────────────────────────────────────────────────────────
+
+(async function init() {
+  await loadTables();
+  await loadSummary();
+  startAutoRefresh();
+})();
+</script>
+</body>
+</html>
