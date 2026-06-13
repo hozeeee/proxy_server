@@ -101,8 +101,8 @@ source ~/.bashrc
 nvm install --lts
 
 # 4. 创建软链接，使系统全局可用 node 命令
-#    先通过 which node 找到 nvm 安装的实际路径，再创建软链接到 /usr/bin/node
-ln -s /home/hozee/.nvm/versions/node/v24.16.0/bin/node /usr/bin/node</pre>
+#  先通过 which node 找到 nvm 安装的实际路径，再创建软链接到 /usr/bin/node
+ln -s /home/username/.nvm/versions/node/v24.16.0/bin/node /usr/bin/node</pre>
 </body>
 </html>
 `;
