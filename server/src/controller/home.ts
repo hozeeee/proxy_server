@@ -88,6 +88,21 @@ const descriptionHtml = `
   }
 }</pre>
   <p>健康检查接口：<a href="http://localhost:8605/health">http://&lt;HOST&gt;:8605/health</a></p>
+
+  <h2>升级 Node.js</h2>
+  <p>使用 nvm（Node Version Manager）管理和升级 Node.js 版本： (注意使用 root 权限)</p>
+  <pre># 1. 安装 nvm（Node Version Manager）
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+
+# 2. 重新加载 shell 配置，使 nvm 命令生效
+source ~/.bashrc
+
+# 3. 通过 nvm 安装最新的 LTS 版本 Node.js
+nvm install --lts
+
+# 4. 创建软链接，使系统全局可用 node 命令
+#    先通过 which node 找到 nvm 安装的实际路径，再创建软链接到 /usr/bin/node
+ln -s /home/hozee/.nvm/versions/node/v24.16.0/bin/node /usr/bin/node</pre>
 </body>
 </html>
 `;
