@@ -39,6 +39,10 @@ const descriptionHtml = `
       <a href="/api/device/list">/api/device/list</a>
     </li>
     <li>
+      一键安装转发服务（通过 systemd 管理）：
+      <pre>export SERVER_HOST=ipv6.fhz920p.seeseeyou.cn:8600 &amp;&amp; curl http://$SERVER_HOST/forward_end/shell/forward_manager.service_creator.sh | DEVICE_ID=XXXX bash</pre>
+    </li>
+    <li>
       如果单纯地执行 JS 脚本，可以增加 <code>OPEN_DEBUG=1</code> 参数，开启调试模式，能够将错误信息输出到控制台。
       <pre>DEVICE_ID=&lt;设备ID&gt; SERVER_HOST=127.0.0.1:8600 OPEN_DEBUG=1 node end_manager.js</pre>
     </li>
