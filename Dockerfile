@@ -55,6 +55,7 @@ RUN npm i \
 # 卷映射
 VOLUME ["/my_project/server/cache_files"]
 VOLUME ["/my_project/server/db-data"]
+VOLUME ["/my_project/server/logs"]
 
 
 EXPOSE 8600-8699

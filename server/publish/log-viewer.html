@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proxy Server 日志查看器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; display: flex; flex-direction: column; height: 100vh; }
+
+  /* ── Header ──────────────────────────────────────────────────────────── */
+  .header { background: #161b22; border-bottom: 1px solid #30363d; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .header h2 { font-size: 15px; font-weight: 600; color: #e6edf3; }
+  .header .subtitle { font-size: 12px; color: #8b949e; margin-left: 12px; }
+  #refreshTime { font-size: 11px; color: #6e7681; }
+
+  /* ── Layout ───────────────────────────────────────────────────────────── */
+  .main-layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Sidebar ──────────────────────────────────────────────────────────── */
+  .sidebar { width: 260px; background: #161b22; border-right: 1px solid #30363d; display: flex; flex-direction: column; flex-shrink: 0; }
+  .sidebar-header { padding: 10px 12px; border-bottom: 1px solid #30363d; font-size: 12px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; }
+  .file-list { flex: 1; overflow-y: auto; }
+  .file-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #21262d; transition: background .15s; }
+  .file-item:hover { background: #1c2128; }
+  .file-item.active { background: #1f2937; border-left: 3px solid #58a6ff; padding-left: 9px; }
+  .file-item .file-name { font-size: 12px; font-weight: 500; color: #c9d1d9; word-break: break-all; margin-bottom: 3px; }
+  .file-item .file-meta { font-size: 10px; color: #6e7681; display: flex; justify-content: space-between; }
+  .file-list-empty { padding: 20px; text-align: center; color: #6e7681; font-size: 12px; }
+
+  /* ── Content Area ─────────────────────────────────────────────────────── */
+  .content-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── Controls Bar ─────────────────────────────────────────────────────── */
+  .controls-bar { background: #161b22; border-bottom: 1px solid #30363d; padding: 8px 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
+  .controls-bar label { font-size: 12px; color: #8b949e; display: flex; align-items: center; gap: 4px; }
+  .controls-bar select, .controls-bar input[type="number"] { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; border-radius: 4px; padding: 3px 6px; font-size: 12px; }
+  .controls-bar select { min-width: 80px; }
+  .controls-bar input[type="number"] { width: 70px; }
+  .controls-bar button { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: background .15s; }
+  .controls-bar button:hover { background: #30363d; border-color: #8b949e; }
+  .controls-bar button.active { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+  .controls-bar input[type="text"] { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; border-radius: 4px; padding: 4px 8px; font-size: 12px; flex: 1; min-width: 120px; }
+  .controls-bar input[type="text"]:focus { outline: none; border-color: #58a6ff; }
+  .controls-sep { width: 1px; height: 18px; background: #30363d; flex-shrink: 0; }
+  .info-badge { font-size: 11px; color: #8b949e; white-space: nowrap; }
+  .info-badge b { color: #58a6ff; }
+
+  /* ── Log Viewer ───────────────────────────────────────────────────────── */
+  .log-viewer { flex: 1; overflow: auto; position: relative; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-size: 12px; line-height: 1.7; }
+  .log-table { width: 100%; border-collapse: collapse; }
+  .log-table td { padding: 0 8px; vertical-align: top; white-space: pre-wrap; word-break: break-all; }
+  .log-table .line-no { width: 1px; min-width: 48px; text-align: right; color: #484f58; user-select: none; padding-right: 10px; border-right: 1px solid #21262d; background: #0d1117; position: sticky; left: 0; }
+  .log-table .line-content { padding-left: 10px; }
+  .log-table tr { border-bottom: none; }
+  .log-table tr:hover td { background: #161b22; }
+
+  /* 日志级别着色 */
+  .log-line--error .line-content, .log-line--fatal .line-content { color: #f85149; }
+  .log-line--warn .line-content { color: #d29922; }
+  .log-line--info .line-content { color: #c9d1d9; }
+  .log-line--debug .line-content { color: #6e7681; }
+
+  /* 搜索高亮 */
+  mark { background: #f0883e; color: #0d1117; border-radius: 2px; padding: 0 1px; }
+
+  /* ── Floating scroll-to-bottom ───────────────────────────────────────── */
+  .scroll-bottom-btn { position: absolute; bottom: 16px; right: 16px; background: #21262d; border: 1px solid #30363d; color: #c9d1d9; border-radius: 50%; width: 36px; height: 36px; display: none; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.4); transition: background .15s; z-index: 10; }
+  .scroll-bottom-btn:hover { background: #30363d; }
+  .scroll-bottom-btn.visible { display: flex; }
+
+  /* ── Empty state ──────────────────────────────────────────────────────── */
+  .empty-state { flex: 1; display: flex; align-items: center; justify-content: center; color: #6e7681; font-size: 14px; flex-direction: column; gap: 8px; }
+  .empty-state .icon { font-size: 48px; opacity: .3; }
+
+  /* ── Loading ──────────────────────────────────────────────────────────── */
+  .loading-bar { height: 2px; background: #1f6feb; position: absolute; top: 0; left: 0; width: 0; transition: width .3s; z-index: 20; }
+  .loading-bar.active { animation: load-progress 1.2s ease-in-out; }
+  @keyframes load-progress { 0%{width:0} 60%{width:80%} 100%{width:100%} }
+
+  /* ── Scrollbar ─────────────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #0d1117; }
+  ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+  /* ── Responsive ────────────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .sidebar { width: 180px; }
+    .controls-bar { gap: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="display:flex;align-items:center;">
+    <h2>📋 Proxy Server 日志查看器</h2>
+    <span class="subtitle" id="logDirLabel"></span>
+  </div>
+  <span id="refreshTime"></span>
+</div>
+
+<div class="main-layout">
+  <!-- 左侧文件列表 -->
+  <div class="sidebar">
+    <div class="sidebar-header">日志文件</div>
+    <div class="file-list" id="fileList">
+      <div class="file-list-empty">加载中...</div>
+    </div>
+  </div>
+
+  <!-- 右侧内容 -->
+  <div class="content-area">
+    <!-- 控制栏 -->
+    <div class="controls-bar" id="controlsBar" style="display:none;">
+      <label>行数：
+        <select id="linesSelect" onchange="loadLogContent()">
+          <option value="100">100 行</option>
+          <option value="500" selected>500 行</option>
+          <option value="1000">1000 行</option>
+          <option value="2000">2000 行</option>
+          <option value="-1">全部</option>
+        </select>
+      </label>
+      <label>
+        <input type="checkbox" id="tailToggle" checked onchange="loadLogContent()"> 尾部模式
+      </label>
+      <div class="controls-sep"></div>
+      <label>搜索：
+        <input type="text" id="searchInput" placeholder="输入关键词过滤（支持正则）" oninput="debounceSearch()">
+      </label>
+      <label>
+        <input type="checkbox" id="regexToggle" onchange="loadLogContent()"> 正则
+      </label>
+      <div class="controls-sep"></div>
+      <label>
+        <input type="checkbox" id="autoRefreshToggle" checked onchange="toggleAutoRefresh()"> 自动刷新
+      </label>
+      <label>间隔：
+        <input type="number" id="intervalInput" value="8" min="1" max="300" style="width:50px;" onchange="resetAutoRefresh()"> 秒
+      </label>
+      <button onclick="loadLogContent()">刷新</button>
+      <div class="controls-sep"></div>
+      <span class="info-badge" id="logInfo"></span>
+    </div>
+
+    <!-- 加载条 -->
+    <div class="loading-bar" id="loadingBar"></div>
+
+    <!-- 日志内容 -->
+    <div class="log-viewer" id="logViewer">
+      <div class="empty-state">
+        <div class="icon">📂</div>
+        <div>从左侧选择一个日志文件</div>
+      </div>
+    </div>
+
+    <!-- 滚动到底部按钮 -->
+    <button class="scroll-bottom-btn" id="scrollBottomBtn" onclick="scrollToBottom()" title="滚动到底部">↓</button>
+  </div>
+</div>
+
+<script>
+// ── 状态 ──────────────────────────────────────────────────────────────────────
+let currentFile = null;
+let files = [];
+let autoRefreshTimer = null;
+let searchDebounceTimer = null;
+let lastScrollTop = 0;
+
+// ── 日志级别检测正则 ───────────────────────────────────────────────────────────
+const LOG_LEVEL_RE = {
+  error: /\b(error|fatal|exception|critical|panic)\b/i,
+  warn:  /\b(warn|warning)\b/i,
+  debug: /\b(debug|trace)\b/i,
+};
+
+// ── 初始化 ──────────────────────────────────────────────────────────────────────
+(async function init() {
+  await loadFiles();
+  startAutoRefresh();
+  setupScrollListener();
+})();
+
+// ── 文件列表 ────────────────────────────────────────────────────────────────────
+async function loadFiles() {
+  try {
+    const res = await fetch('/api/logs/files');
+    const data = await res.json();
+    files = data.files || [];
+    document.getElementById('logDirLabel').textContent = data.logDir ? `(${data.logDir})` : '';
+    renderFileList();
+  } catch (e) {
+    document.getElementById('fileList').innerHTML =
+      `<div class="file-list-empty" style="color:#f85149;">加载失败: ${e.message}</div>`;
+  }
+}
+
+function renderFileList() {
+  const container = document.getElementById('fileList');
+  if (!files.length) {
+    container.innerHTML = '<div class="file-list-empty">暂无日志文件</div>';
+    return;
+  }
+  container.innerHTML = files.map(f => `
+    <div class="file-item ${currentFile === f.name ? 'active' : ''}" onclick="selectFile('${escapeAttr(f.name)}')">
+      <div class="file-name">${escapeHtml(f.name)}</div>
+      <div class="file-meta">
+        <span>${f.sizeText}</span>
+        <span>${formatMtime(f.mtime)}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectFile(name) {
+  currentFile = name;
+  document.getElementById('controlsBar').style.display = 'flex';
+  renderFileList();
+  loadLogContent();
+}
+
+// ── 日志内容加载 ────────────────────────────────────────────────────────────────
+async function loadLogContent() {
+  if (!currentFile) return;
+  const viewer = document.getElementById('logViewer');
+  const bar = document.getElementById('loadingBar');
+  bar.classList.remove('active');
+  void bar.offsetWidth; // reflow 触发重新动画
+  bar.classList.add('active');
+
+  const lines = document.getElementById('linesSelect').value;
+  const tail = document.getElementById('tailToggle').checked;
+  const isNearBottom = isScrolledNearBottom();
+
+  try {
+    const params = new URLSearchParams({
+      name: currentFile,
+      lines,
+      tail: tail ? 'true' : 'false',
+    });
+    const res = await fetch(`/api/logs/file?${params}`);
+    const data = await res.json();
+    if (!data.content && data.totalLines === 0) {
+      viewer.innerHTML = '<div class="empty-state"><div class="icon">📄</div><div>文件为空</div></div>';
+      updateLogInfo(data);
+      return;
+    }
+    renderLog(data);
+    updateLogInfo(data);
+    if (tail && isNearBottom) scrollToBottom();
+    document.getElementById('refreshTime').textContent = '更新于 ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    viewer.innerHTML = `<div class="empty-state" style="color:#f85149;">加载失败: ${e.message}</div>`;
+  }
+}
+
+function renderLog(data) {
+  const viewer = document.getElementById('logViewer');
+  const searchQuery = document.getElementById('searchInput').value;
+  const isRegex = document.getElementById('regexToggle').checked;
+  const lines = data.content.split('\n');
+  let searchRe = null;
+  if (searchQuery) {
+    try {
+      searchRe = isRegex ? new RegExp(searchQuery, 'gi') : null;
+    } catch {}
+  }
+
+  const rows = lines.map((line, i) => {
+    const lineNo = data.startLine + i;
+    const levelClass = getLogLevel(line);
+    const highlighted = highlightLine(line, searchQuery, searchRe, isRegex);
+    // 搜索过滤：如果有搜索词且不匹配，隐藏该行
+    const hidden = searchQuery && !matchSearch(line, searchQuery, searchRe, isRegex) ? 'display:none;' : '';
+    return `<tr class="${levelClass}" style="${hidden}">
+      <td class="line-no">${lineNo}</td>
+      <td class="line-content">${highlighted}</td>
+    </tr>`;
+  }).join('');
+
+  viewer.innerHTML = `<table class="log-table"><tbody>${rows}</tbody></table>`;
+}
+
+function getLogLevel(line) {
+  if (LOG_LEVEL_RE.error.test(line)) return 'log-line--error';
+  if (LOG_LEVEL_RE.warn.test(line))  return 'log-line--warn';
+  if (LOG_LEVEL_RE.debug.test(line)) return 'log-line--debug';
+  return 'log-line--info';
+}
+
+function highlightLine(line, query, regex, isRegex) {
+  const safe = escapeHtml(line);
+  if (!query) return safe;
+  if (isRegex && regex) {
+    return safe.replace(regex, m => `<mark>${m}</mark>`);
+  }
+  // 普通文本搜索
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return safe.replace(new RegExp(escaped, 'gi'), m => `<mark>${m}</mark>`);
+}
+
+function matchSearch(line, query, regex, isRegex) {
+  if (isRegex && regex) return regex.test(line);
+  return line.toLowerCase().includes(query.toLowerCase());
+}
+
+function updateLogInfo(data) {
+  const el = document.getElementById('logInfo');
+  const size = formatBytes(data.fileSize);
+  el.innerHTML = `共 <b>${data.totalLines.toLocaleString()}</b> 行 | 文件 <b>${size}</b> | 显示 <b>${data.startLine}–${data.endLine}</b>${data.truncated ? ' (已截断)' : ''}`;
+}
+
+// ── 搜索防抖 ────────────────────────────────────────────────────────────────────
+function debounceSearch() {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    // 如果已有内容，直接前端过滤重新渲染（不发请求）
+    const viewer = document.getElementById('logViewer');
+    const table = viewer.querySelector('.log-table');
+    if (table) {
+      // 重新请求以重新渲染
+      loadLogContent();
+    }
+  }, 300);
+}
+
+// ── 滚动控制 ────────────────────────────────────────────────────────────────────
+function setupScrollListener() {
+  const viewer = document.getElementById('logViewer');
+  viewer.addEventListener('scroll', () => {
+    lastScrollTop = viewer.scrollTop;
+    const btn = document.getElementById('scrollBottomBtn');
+    const nearBottom = isScrolledNearBottom();
+    btn.classList.toggle('visible', !nearBottom);
+  });
+}
+
+function isScrolledNearBottom() {
+  const viewer = document.getElementById('logViewer');
+  return viewer.scrollHeight - viewer.scrollTop - viewer.clientHeight < 80;
+}
+
+function scrollToBottom() {
+  const viewer = document.getElementById('logViewer');
+  viewer.scrollTop = viewer.scrollHeight;
+}
+
+// ── 自动刷新 ────────────────────────────────────────────────────────────────────
+function toggleAutoRefresh() {
+  document.getElementById('autoRefreshToggle').checked ? startAutoRefresh() : stopAutoRefresh();
+}
+
+function startAutoRefresh() {
+  stopAutoRefresh();
+  const sec = parseInt(document.getElementById('intervalInput').value, 10) || 8;
+  autoRefreshTimer = setInterval(() => {
+    loadFiles();
+    if (currentFile) loadLogContent();
+  }, sec * 1000);
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+}
+
+function resetAutoRefresh() {
+  if (document.getElementById('autoRefreshToggle').checked) startAutoRefresh();
+}
+
+// ── 工具函数 ────────────────────────────────────────────────────────────────────
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+function escapeAttr(str) {
+  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+function formatMtime(iso) {
+  const d = new Date(iso);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${mm}-${dd} ${hh}:${mi}`;
+}
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(2) + ' MB';
+}
+
+// ── 快捷键 ──────────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  // Ctrl/Cmd + F 聚焦搜索框
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+    e.preventDefault();
+    document.getElementById('searchInput').focus();
+  }
+  // ESC 清除搜索
+  if (e.key === 'Escape') {
+    const input = document.getElementById('searchInput');
+    if (input.value) { input.value = ''; loadLogContent(); }
+    input.blur();
+  }
+});
+</script>
+</body>
+</html>

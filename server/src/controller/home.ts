@@ -68,6 +68,23 @@ const descriptionHtml = `
       <pre>GET /api/data/table/:name?limit=100</pre>
     </li>
   </ul>
+  <h2>Log Viewer - 日志查看器</h2>
+  <p>在线查看服务器日志文件，支持日志着色、关键词搜索、自动刷新等能力。</p>
+  <ul>
+    <li>
+      打开日志查看器页面：
+      <a href="/log-viewer">/log-viewer</a>
+    </li>
+    <li>
+      获取日志文件列表：
+      <a href="/api/logs/files">/api/logs/files</a>
+    </li>
+    <li>
+      读取指定日志文件内容（支持 <code>?lines=N</code>、<code>?tail=true|false</code>、<code>?offset=N</code>）：
+      <pre>GET /api/logs/file?name=midway-web.log&amp;lines=500&amp;tail=true</pre>
+    </li>
+  </ul>
+
   <h2>MCP 服务配置</h2>
   <p>本服务提供 MCP（Model Context Protocol）接口，支持 <strong>stdio</strong> 与 <strong>Streamable HTTP</strong> 两种传输模式。</p>
 

@@ -23,6 +23,7 @@ const hostPath = '/root/___sync_to_ds___/proxy_server';
 const volumeMap = {
   '/my_project/server/cache_files': join(hostPath, 'server/cache_files'),
   '/my_project/server/db-data': join(hostPath, 'server/db-data'),
+  '/my_project/server/logs': join(hostPath, 'server/logs'),
 };
 const volumeArgs = Object.entries(volumeMap).map(([imgPath, hostPath]) => `-v ${hostPath}:${imgPath}`).join(' ');
 
