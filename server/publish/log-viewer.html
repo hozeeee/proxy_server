@@ -19,7 +19,13 @@
 
   /* ── Sidebar ──────────────────────────────────────────────────────────── */
   .sidebar { width: 260px; background: #161b22; border-right: 1px solid #30363d; display: flex; flex-direction: column; flex-shrink: 0; }
-  .sidebar-header { padding: 10px 12px; border-bottom: 1px solid #30363d; font-size: 12px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; }
+  .sidebar-header { padding: 8px 12px; border-bottom: 1px solid #30363d; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+  .sidebar-header-top { display: flex; align-items: center; justify-content: space-between; }
+  .sidebar-header-top span { font-size: 12px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; }
+  .sidebar-header-top .file-count { font-size: 11px; color: #6e7681; font-weight: normal; text-transform: none; }
+  .sidebar-filter { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; border-radius: 4px; padding: 4px 8px; font-size: 12px; width: 100%; outline: none; }
+  .sidebar-filter:focus { border-color: #58a6ff; }
+  .sidebar-filter::placeholder { color: #484f58; }
   .file-list { flex: 1; overflow-y: auto; }
   .file-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #21262d; transition: background .15s; }
   .file-item:hover { background: #1c2128; }
@@ -104,7 +110,13 @@
 <div class="main-layout">
   <!-- 左侧文件列表 -->
   <div class="sidebar">
-    <div class="sidebar-header">日志文件</div>
+    <div class="sidebar-header">
+      <div class="sidebar-header-top">
+        <span>日志文件</span>
+        <span class="file-count" id="fileCount"></span>
+      </div>
+      <input type="text" class="sidebar-filter" id="fileFilter" placeholder="过滤文件名..." oninput="renderFileList()">
+    </div>
     <div class="file-list" id="fileList">
       <div class="file-list-empty">加载中...</div>
     </div>
@@ -199,11 +211,15 @@ async function loadFiles() {
 
 function renderFileList() {
   const container = document.getElementById('fileList');
-  if (!files.length) {
-    container.innerHTML = '<div class="file-list-empty">暂无日志文件</div>';
+  const filterVal = (document.getElementById('fileFilter').value || '').toLowerCase();
+  const filtered = filterVal ? files.filter(f => f.name.toLowerCase().includes(filterVal)) : files;
+  document.getElementById('fileCount').textContent = filterVal ? `${filtered.length} / ${files.length}` : `${files.length} 个`;
+
+  if (!filtered.length) {
+    container.innerHTML = files.length ? '<div class="file-list-empty">无匹配文件</div>' : '<div class="file-list-empty">暂无日志文件</div>';
     return;
   }
-  container.innerHTML = files.map(f => `
+  container.innerHTML = filtered.map(f => `
     <div class="file-item ${currentFile === f.name ? 'active' : ''}" onclick="selectFile('${escapeAttr(f.name)}')">
       <div class="file-name">${escapeHtml(f.name)}</div>
       <div class="file-meta">
