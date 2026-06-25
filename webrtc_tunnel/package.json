@@ -1,0 +1,32 @@
+{
+  "name": "webrtc_tunnel",
+  "version": "1.0.0",
+  "description": "WebRTC P2P NAT traversal tunnel - 服务器仅做信令，数据走P2P直连",
+  "main": "dist/client.js",
+  "types": "dist/lib/client.d.ts",
+  "scripts": {
+    "build": "rollup -c rollup.config.mjs",
+    "build:server": "rollup -c rollup.config.mjs --environment TARGET:server",
+    "build:client": "rollup -c rollup.config.mjs --environment TARGET:client",
+    "server": "node dist/server.js",
+    "client": "node dist/client-bin.js",
+    "test": "node dist/test_e2e.js",
+    "___说明___1: dev-server 请拷贝运行该命令": "scp -o ProxyCommand='ncat --proxy 192.168.3.101:8611 --proxy-type http %h %p' dist/server.js root@123.57.52.2:/root/",
+    "upload-server": "scp dist/server.js root@123.57.52.2:/root/"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "node-datachannel": "^0.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "rollup": "^4.9.0",
+    "@rollup/plugin-typescript": "^11.1.0",
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.2.0",
+    "@rollup/plugin-json": "^6.1.0",
+    "tslib": "^2.6.0",
+    "@types/ws": "^8.5.0",
+    "@types/node": "^18.0.0"
+  }
+}
