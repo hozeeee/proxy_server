@@ -16,6 +16,92 @@
         A ◀═══ P2P 直连 (DataChannel) ═══▶ B
 ```
 
+## WebSocket 信令交互流程
+
+完整的信令交互（注册 → 建连 → P2P 直连 → 心跳 → 断开清理）如下：
+
+```mermaid
+sequenceDiagram
+    participant A as Client A（发起方）
+    participant S as SignalingServer（信令服务器）
+    participant B as Client B（接受方）
+
+    Note over A,B: ① 注册阶段（双方独立进行）
+
+    A->>S: register { id: "A" }
+    S-->>A: registered { id: "A" }
+    S->>S: _clients.set("A", ws)
+
+    B->>S: register { id: "B" }
+    S-->>B: registered { id: "B" }
+    S->>S: _clients.set("B", ws)
+
+    Note over A,B: ② 发起连接阶段
+
+    A->>S: offer_request { targetId: "B" }
+    S->>S: _addPairing("A", "B")
+    S-->>B: incoming_connection { from: "A" }
+
+    Note over A,B: ③ SDP 交换阶段
+
+    A->>A: 创建 PeerConnection + DataChannel<br/>生成 SDP Offer
+    A->>S: offer { targetId: "B", sdp: "..." }
+    S->>S: _addPairing("A","B") 幂等
+    S-->>B: offer { from: "A", sdp: "..." }
+
+    B->>B: 创建 PeerConnection<br/>setRemoteDescription(offer)<br/>生成 SDP Answer
+    B->>S: answer { targetId: "A", sdp: "..." }
+    S->>S: _addPairing("B","A") 幂等
+    S-->>A: answer { from: "B", sdp: "..." }
+
+    A->>A: setRemoteDescription(answer)
+
+    Note over A,B: ④ ICE Candidate 交换阶段（双向并发）
+
+    A->>S: candidate { targetId:"B", candidate, mid }
+    S-->>B: candidate { from:"A", candidate, mid }
+
+    B->>S: candidate { targetId:"A", candidate, mid }
+    S-->>A: candidate { from:"B", candidate, mid }
+
+    Note over A,B: ⑤ P2P 直连建立（DataChannel open）
+
+    A->>A: DataChannel onOpen<br/>new Tunnel(dc, isInitiator:true)
+    B->>B: onDataChannel 回调<br/>new Tunnel(dc, isInitiator:false)
+
+    Note over A,B: ⑥ P2P 数据传输（信令服务器不再参与）
+
+    A->>A: Tunnel.send(data)
+    A-->>B: [WebRTC DataChannel 直连]
+    B-->>A: [WebRTC DataChannel 直连]
+
+    Note over A,B: ⑦ 心跳保活（P2P 通道内，不经过信令服务器）
+
+    loop 每隔 heartbeatInterval (默认 5s)
+        A->>B: PING (DataChannel)
+        B-->>A: PONG (DataChannel)
+    end
+
+    Note over A,B: ⑧ 断开阶段（以 A 主动断开为例）
+
+    A->>S: WebSocket close
+    S->>S: _removePairings("A")<br/>_clients.delete("A")
+    S-->>B: peer_disconnected { peerId: "A" }
+    B->>B: tunnel.close()<br/>_tunnels.delete("A")
+    B->>B: 如配置自动重连<br/>等待 tunnelReconnectInterval 后重试
+```
+
+**关键设计点**：
+
+| 点 | 说明 |
+|---|---|
+| 服务器纯转发 | 服务器不解析 SDP / candidate 内容，原样转发给目标 |
+| 配对关系双向记录 | `_addPairing` 对 A→B 和 B→A 都记录，断开时可通知所有配对方 |
+| ICE candidate 缓冲 | 客户端收到 candidate 时若 PeerConnection 还没设好，先暂存到 `_pendingCandidates`，等 SDP 设置完后再 flush |
+| 心跳只在 DataChannel 内 | `PING/PONG` 走 P2P 直连，不经过信令服务器，与信令 WebSocket 完全隔离 |
+| 断开通知机制 | 服务器监听 `ws.on('close')`，遍历配对关系，向所有配对方推送 `peer_disconnected` |
+| 自动重连分两层 | 信令 WebSocket 断了重连信令服务器；Tunnel 关闭了则重新走一遍 offer_request → offer → answer 流程 |
+
 ## 目录结构
 
 ```
