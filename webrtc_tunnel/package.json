@@ -8,6 +8,7 @@
     "build": "rollup -c rollup.config.mjs",
     "build:server": "rollup -c rollup.config.mjs --environment TARGET:server",
     "build:client": "rollup -c rollup.config.mjs --environment TARGET:client",
+    "build:test": "rollup -c rollup.config.mjs --environment TARGET:test",
     "server": "node dist/server.js",
     "client": "node dist/client-bin.js",
     "test": "node dist/test_e2e.js",

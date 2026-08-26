@@ -11,7 +11,8 @@ import path from 'path';
  * 通过环境变量 TARGET 控制构建目标:
  *   TARGET=server  → 打包信令服务器为单文件 dist/server.js
  *   TARGET=client  → 打包客户端为单文件 dist/client-bin.js (node-datachannel 为外部依赖)
- *   不指定          → 同时构建 server + client
+ *   TARGET=test    → 打包端到端测试为单文件 dist/test_e2e.js
+ *   不指定          → 同时构建 client + server + test
  */
 
 /**
@@ -76,6 +77,24 @@ const clientConfig = {
   ],
 };
 
+const testConfig = {
+  input: 'src/examples/test_e2e.ts',
+  output: {
+    file: 'dist/test_e2e.js',
+    format: 'cjs',
+    banner: '#!/usr/bin/env node',
+  },
+  external: ['node-datachannel'],
+  plugins: [
+    // 测试会内联启动信令服务器，因此同样需要解析 virtual:client-script
+    injectClientScript(),
+    resolve({ preferBuiltins: true }),
+    commonjs(),
+    json(),
+    typescript({ tsconfig: './tsconfig.json', declaration: false, declarationDir: undefined }),
+  ],
+};
+
 const target = process.env.TARGET;
 
 let configs;
@@ -83,9 +102,11 @@ if (target === 'server') {
   configs = [serverConfig];
 } else if (target === 'client') {
   configs = [clientConfig];
+} else if (target === 'test') {
+  configs = [testConfig];
 } else {
-  // 同时构建时，先构建 client，再构建 server（确保 client-bin.js 存在）
-  configs = [clientConfig, serverConfig];
+  // 同时构建时，先构建 client，再构建 server（确保 client-bin.js 存在以便注入）
+  configs = [clientConfig, serverConfig, testConfig];
 }
 
 export default configs;
