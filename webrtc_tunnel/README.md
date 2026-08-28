@@ -16,7 +16,7 @@
         A ◀═══ P2P 直连 (DataChannel) ═══▶ B
 ```
 
-## 信令协议（v2）
+## 信令协议（v3）
 
 连接过程被严格划分为**两个阶段**，阶段的先后顺序由**服务端强制**保证，而不是依赖客户端自觉：
 
@@ -24,6 +24,7 @@
 |---|---|---|
 | **阶段一 · 注册与配对** | `register` → `pair` → `pair_invite` / `pair_waiting` → `paired` | 只有双方都接入服务器**且互相声明了配对意向**，服务端才下发 `paired`。在此之前不会转发任何 WebRTC 信令 |
 | **阶段二 · 建连** | `offer` → `answer` → `candidate` | 每条消息都携带 `session` 轮次编号，服务端校验「已配对 + 轮次匹配 + 角色正确」后才转发 |
+| **旁路 · 观测** | `status` | 客户端把自己所处阶段单向上报给服务端，仅用于排查，不参与流程、无需回复 |
 
 协议消息与类型定义集中在 [`src/lib/protocol.ts`](src/lib/protocol.ts)，服务端与客户端共用同一份声明。
 
@@ -37,8 +38,8 @@ sequenceDiagram
 
     Note over A,B: ① 阶段一 · 注册
 
-    A->>S: register { id: "A", protocol: 2 }
-    S-->>A: registered { id: "A", protocol: 2 }
+    A->>S: register { id: "A", protocol: 3 }
+    S-->>A: registered { id: "A", protocol: 3 }
 
     Note over A,B: ② 阶段一 · 配对（A 先到，B 尚未上线）
 
@@ -47,8 +48,8 @@ sequenceDiagram
     S-->>A: pair_waiting { peerId: "B", reason: "peer_offline" }
     Note right of S: 意向由服务端长期保留<br/>A 无限等待，不设超时<br/>此刻双方都不做任何 WebRTC 操作
 
-    B->>S: register { id: "B", protocol: 2 }
-    S-->>B: registered { id: "B", protocol: 2 }
+    B->>S: register { id: "B", protocol: 3 }
+    S-->>B: registered { id: "B", protocol: 3 }
     S-->>B: pair_invite { peerId: "A" }
     Note right of S: B 上线时服务端主动补发邀请<br/>（suitorsOf("B")）
 
@@ -59,6 +60,7 @@ sequenceDiagram
 
     S-->>A: paired { peerId: "B", role: "initiator", session: 1 }
     S-->>B: paired { peerId: "A", role: "answerer",  session: 1 }
+    Note right of S: 两条 paired 都投递成功才算配对成功<br/>任一方投递失败即回滚本轮（closeSession）
 
     Note over A,B: ④ 阶段二 · SDP 交换（角色由服务端指派，无 glare）
 
@@ -115,8 +117,11 @@ sequenceDiagram
 | **服务器纯转发** | 服务器不解析 SDP / candidate 内容，仅校验元信息后原样转发 |
 | **ICE candidate 缓冲** | 收到 candidate 时若本地尚未 `setRemoteDescription`，先暂存于会话的 `pendingCandidates`，SDP 设置完成后 flush |
 | **心跳只在 DataChannel 内** | `PING/PONG` 走 P2P 直连，与信令 WebSocket 完全隔离 |
+| **信令通道 ping/pong 保活** | 两端都对信令 WebSocket 做存活探测：服务端每 20s 巡检一次（上一轮无任何回应即 `terminate`），客户端静默 60s 未收到任何帧也强制重连。配对等待期这条连接完全静默，NAT 回收映射后会形成半开死连接，不探测就无法察觉（见下文「连接存活检测与阶段上报」） |
+| **`paired` 投递校验与回滚** | 两条 `paired` 都投递成功才打印「配对成功」；任一方失败则 `closeSession` 回滚本轮、清理失效连接，并给存活方回 `pair_waiting(peer_offline)`。避免出现「一方在阶段二建连、另一方还在阶段一等待」的永久错位 |
+| **阶段状态上报** | 客户端用 `status` 消息把各阶段（注册 / 配对 / SDP / ICE / 隧道）单向上报到服务端，服务端存入环形缓冲，可在状态页或 `GET /stages` 对齐双方时间线 |
 
-> ⚠️ **协议不向后兼容**：v2 的消息名与字段（统一使用 `peerId`，新增 `session`）与旧版本完全不同，且 `register` 会校验 `protocol` 版本号。**服务端与客户端必须同时升级**，已部署在远端机器的旧 `client.js` 会被服务端以 `register_failed`（协议版本不匹配）拒绝。
+> ⚠️ **协议不向后兼容**：v3 在 v2 基础上新增 `status` 上报消息与信令保活语义，且 `register` 会校验 `protocol` 版本号。**服务端与客户端必须同时升级**，已部署在远端机器的旧 `client.js` 会被服务端以 `register_failed`（协议版本不匹配）拒绝。
 
 ## 目录结构
 
@@ -124,10 +129,11 @@ sequenceDiagram
 webrtc_tunnel/
 ├── src/                          # TypeScript 源码
 │   ├── lib/
-│   │   ├── protocol.ts           # 信令协议：消息类型、版本号、角色分配规则
+│   │   ├── protocol.ts           # 信令协议：消息类型、版本号、角色分配规则、阶段枚举
 │   │   ├── pair_registry.ts      # 配对状态机：意向 / 轮次（纯状态，无网络逻辑）
-│   │   ├── signaling_server.ts   # 信令服务器：注册、撮合、转发校验
-│   │   ├── status_page.ts        # 服务器 HTML 状态页渲染
+│   │   ├── stage_log.ts          # 客户端阶段上报的服务端存档（环形缓冲）
+│   │   ├── signaling_server.ts   # 信令服务器：注册、撮合、转发校验、存活巡检
+│   │   ├── status_page.ts        # 服务器 HTML 状态页渲染（含阶段时间线）
 │   │   ├── client.ts             # 客户端 SDK：两阶段流程驱动
 │   │   └── tunnel.ts             # 隧道连接封装（含心跳）
 │   ├── bin/
@@ -190,14 +196,18 @@ npm run server
 
 | 端点 | 说明 |
 |------|------|
-| `GET /` | 浏览器访问返回 HTML 状态页面（含在线客户端列表与配对状态，每 5 秒自动刷新）；API 访问（`Accept: application/json`）返回 JSON |
+| `GET /` | 浏览器访问返回 HTML 状态页面（含在线客户端列表与各自当前阶段、配对状态、阶段上报时间线，每 5 秒自动刷新）；API 访问（`Accept: application/json`）返回 JSON |
 | `GET /health` | 健康检查，始终返回 JSON |
+| `GET /stages` | 客户端阶段上报的时间线（JSON，最近 200 条），排查建连问题的主入口 |
 | `GET /client.js` | 下载客户端脚本（构建时自动嵌入） |
 
 ```bash
 # 健康检查
 curl http://localhost:9876/health
 # {"status":"ok","clients":2,"pairs":1,"uptime":123,"timestamp":"..."}
+
+# 查看双方建连各阶段的时间线
+curl http://localhost:9876/stages
 
 # 下载客户端脚本
 curl -O http://localhost:9876/client.js
@@ -243,6 +253,7 @@ node client.js --id remote-node --connect peer-id
 | `--no-reconnect` | 否 | 禁用自动重连 |
 | `--reconnect-interval <ms>` | 否 | 重连间隔，默认 5000ms |
 | `--max-reconnect <n>` | 否 | 最大重连次数，0=无限（默认） |
+| `--no-report` | 否 | 不向服务端上报建连阶段状态（默认上报） |
 | `--quiet` | 否 | 不输出「注册 → 配对 → 建连」的阶段流转日志 |
 
 > **双方都可以指定 `--connect` 指向对方**：角色由信令服务器分配，不会产生 offer 冲突。事实上只有一方指定 `--connect` 也能建连 —— 另一方会收到 `pair_invite` 并自动确认。
@@ -283,21 +294,26 @@ await client.connectSignaling();
 client.on('pair-waiting', (peerId, reason) => console.log(`等待 ${peerId}: ${reason}`));
 client.on('paired', (peerId, role) => console.log(`已与 ${peerId} 配对，角色 ${role}`));
 
-// 【阶段一 → 阶段二】声明配对并等待隧道建立
-// 对端未上线时会一直等待（不超时），配对成功后才开始交换 WebRTC 信令
-const tunnel = await client.connect('peer-id');
-tunnel.send(Buffer.from('hello'));
-
-// 接收数据
-tunnel.on('data', (buf: Buffer) => {
-  console.log('收到:', buf);
+// 隧道统一入口：主动 / 被动、首次 / 重连的每一条隧道都会派发 'tunnel'。
+//
+// 必须在这里绑定业务逻辑，不要只用 connect() 的返回值 —— 隧道掉线重连后库会换出
+// 一个全新的 Tunnel 对象，而 connect() 的 promise 只结算一次。只绑首条隧道的话，
+// 重连后本端既发不出数据也收不到 'data'，但两端与服务端都仍显示「隧道已建立」，
+// 表现为通道假成功。
+client.on('tunnel', (tunnel: Tunnel, peerId: string, info) => {
+  console.log(`隧道已建立 ⇄ ${peerId} [${info.role}]${info.reconnected ? '（重连）' : ''}`);
+  tunnel.on('data', (buf: Buffer) => console.log('收到:', buf));
+  tunnel.send(Buffer.from('hello'));
 });
 
-// 被动接受对端发起的配对（无需调用 connect）
-client.on('connection', (tunnel: Tunnel, peerId: string) => {
-  console.log(`${peerId} 连入`);
-  tunnel.on('data', (buf: Buffer) => console.log(buf));
-});
+// 【阶段一 → 阶段二】声明配对意向。
+// 对端未上线时会一直等待（不超时），配对成功后才开始交换 WebRTC 信令。
+// 这里 await 只用于等待首次建连（便于启动阶段就发现问题）。
+await client.connect('peer-id');
+
+// 被动接受对端发起的配对无需调用 connect()，同样由上面的 'tunnel' 接管。
+// 需要随时取当前隧道时用 getTunnel / tunnels，而不是缓存 Tunnel 对象：
+client.getTunnel('peer-id')?.send(Buffer.from('hi'));
 ```
 
 ### 4. 运行测试
@@ -345,6 +361,9 @@ new WebRTCTunnelClient({
   heartbeatInterval: 5000,          // P2P 心跳间隔
   heartbeatTimeout: 15000,          // P2P 心跳超时
   connectTimeout: 30000,            // 【仅阶段二】SDP/ICE 交换超时，不影响阶段一的无限等待
+  signalingPingInterval: 20000,     // 信令通道 ping 间隔，0 = 关闭保活（不建议）
+  signalingIdleTimeout: 60000,      // 信令通道静默超时，超时即强制重连
+  reportStatus: true,               // 是否向服务端上报建连各阶段状态
   verbose: false,                   // 是否输出阶段流转日志
   acceptPeer: (peerId) => true,     // 收到配对邀请时的准入判断，返回 false 则拒绝
   reconnect: {
@@ -366,8 +385,9 @@ new WebRTCTunnelClient({
 | `pair-waiting` | `(peerId: string, reason: string)` | 一 | 配对未完成，正在等待对端（`peer_offline` / `awaiting_peer`） |
 | `paired` | `(peerId: string, role: PeerRole)` | 一→二 | 配对成功，进入建连阶段。`role` 为服务端指派 |
 | `unpaired` | `(peerId: string, reason: string)` | — | 配对被解除（`peer_disconnected` / `peer_unpaired` / `peer_repairing`） |
-| `connection` | `(tunnel: Tunnel, peerId: string)` | 二 | 被动接受的连接建立成功 |
-| `connected` | `(tunnel: Tunnel, peerId: string)` | 二 | 主动 `connect()` 建立成功 |
+| `tunnel` | `(tunnel: Tunnel, peerId: string, info)` | 二 | **推荐订阅**：隧道建立，含每一次重连。`info` 为 `{ peerId, role, passive, reconnected }` |
+| `connection` | `(tunnel: Tunnel, peerId: string)` | 二 | 【兼容】被动接受的连接建立成功 |
+| `connected` | `(tunnel: Tunnel, peerId: string)` | 二 | 【兼容】主动 `connect()` 建立成功 |
 | `disconnected` | `()` | — | 与信令服务器断开（不影响已建立的隧道） |
 | `reconnecting` | `(attempt: number)` | — | 正在重连信令服务器 |
 | `reconnected` | `()` | — | 信令服务器重连成功 |
@@ -396,11 +416,19 @@ new WebRTCTunnelClient({
 ```typescript
 import { SignalingServer } from './lib/signaling_server';
 
-const server = new SignalingServer({ port: 9876 });
+const server = new SignalingServer({
+  port: 9876,
+  pingInterval: 20000,      // 存活巡检间隔，0 = 关闭（不建议）
+  stageLogCapacity: 500,    // 阶段上报保留条数
+  logStageReports: true,    // 是否把上报打印到控制台
+});
 await server.start();
 
 // 查看在线数量与已配对数量
 console.log(server.clientCount, server.pairCount);
+
+// 取客户端阶段上报时间线（新 → 旧）
+console.log(server.stageEvents(50));
 
 // 停止
 await server.stop();
@@ -429,6 +457,72 @@ new WebRTCTunnelClient({
   heartbeatTimeout: 15000,  // 超时时间
 });
 ```
+
+## 连接存活检测与阶段上报
+
+### 为何需要
+
+配对等待期（一方已上线、另一方未到）信令 WebSocket 上没有任何流量。一旦 NAT / 防火墙
+回收空闲映射，连接就会变成 **半开死连接**：双方都收不到 `close`，服务端把死 socket
+当成在线客户端继续撮合，`paired` 与 SDP 全部转发进黑洞，表现为：
+
+- 死链一端：永久停在「等待与 xxx 配对」，像假死；
+- 对端：反复「配对成功 → 建连超时 → 重新配对」，直到操作系统级 TCP 超时（可能十几分钟）才恢复。
+
+### 两道防线
+
+| 机制 | 位置 | 行为 |
+|------|------|------|
+| 服务端存活巡检 | `_sweepDeadConnections` | 每 `pingInterval`（默认 20s）一轮：上一轮未收到任何帧的连接直接 `terminate` 并走正常断开清理，随后对存活连接发一次 `ping` |
+| 客户端静默超时 | `_startSignalingKeepalive` | 每 `signalingPingInterval` 主动 `ping`；超过 `signalingIdleTimeout`（默认 60s）未收到服务端任何帧则 `terminate`，交由既有重连逻辑重建 |
+
+两者都用 `terminate` 而非 `close`：死连接上的关闭握手永远发不出去，只有强制销毁才会立刻触发 `close`。
+
+### 阶段上报
+
+客户端把建连过程的每一步用 `status` 消息单向上报到服务端（不等回复、失败不重试，绝不影响连接流程）：
+
+| 阶段 | 含义 | 携带的 detail |
+|------|------|------|
+| `registered` | 已在信令服务器注册 | 首次注册 / 信令重连后重新注册 |
+| `pair_declared` | 已声明配对意向 | — |
+| `pair_confirmed` | 已确认对端的配对邀请 | — |
+| `pair_waiting` | 等待对端（无限等待） | 等待原因 |
+| `paired` | 配对成功，进入阶段二 | 本方角色 |
+| `offer_sent` / `offer_received` | SDP Offer 已发 / 已收 | — |
+| `answer_sent` / `answer_received` | SDP Answer 已发 / 已收 | — |
+| `ice_gathering` | ICE 候选收集状态变化 | 收集状态 + 本地候选数 |
+| `pc_state` | PeerConnection 状态变化 | 具体状态（connecting / connected / failed 等） |
+| `tunnel_open` | P2P 隧道已建立 | 角色 + 双方候选数 |
+| `tunnel_closed` | 隧道断开 | — |
+| `handshake_failed` | 建连失败 / 超时 | 错误信息 + 双方候选数 |
+| `unpaired` | 配对被解除 | 解除原因 |
+| `repairing` | 正在重新配对 | 第几次、多久后发起 |
+
+服务端用 [`StageLog`](src/lib/stage_log.ts) 存成环形缓冲（默认 500 条，内存有上界），时间戳取服务端
+收到的时刻（不采信客户端时钟，避免两台机器时钟不同步导致时间线错乱），**不随客户端断开而清除**
+—— 客户端掉线前最后几条上报往往正是关键线索。
+
+查看方式：
+
+```bash
+# JSON 时间线（新 → 旧，最近 200 条）
+curl http://<服务器>:9876/stages
+
+# 浏览器打开状态页，在线客户端后面直接标出各自当前阶段，下方是合并后的时间线
+open http://<服务器>:9876/
+```
+
+服务端控制台也会直接打印（可用 `logStageReports: false` 关闭）：
+
+```
+[信令] 阶段上报: client-a → "client-b"  已配对 轮次 #3: 角色=initiator
+[信令] 阶段上报: client-a → "client-b"  建连失败 轮次 #3: 与 "client-b" 建连超时 (30000ms)（本地候选 6 条，远端候选 0 条）
+```
+
+> 上面这两行就是典型的单边错位：本方以为配对成功，但远端候选数为 0 说明对端根本没参与本轮。
+
+上报可用 `--no-report`（CLI）或 `reportStatus: false`（SDK）关闭。
 
 ## 配对状态清理机制
 

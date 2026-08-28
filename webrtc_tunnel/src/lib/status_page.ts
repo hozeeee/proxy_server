@@ -1,4 +1,13 @@
 import type { PairSession } from './pair_registry';
+import { STAGE_LABELS } from './protocol';
+import type { StageEvent } from './stage_log';
+
+/** 状态页上的一个在线客户端及其最新上报阶段 */
+export interface ClientView {
+  id: string;
+  /** 该客户端最后一次上报的阶段，未上报过则为 null */
+  latestStage: StageEvent | null;
+}
 
 /** 状态页 / 健康检查所需的运行时快照 */
 export interface ServerStatus {
@@ -36,11 +45,45 @@ function escapeHtml(text: string): string {
   });
 }
 
-/** 渲染在线客户端列表 */
-function renderClientList(clientIds: string[]): string {
-  if (clientIds.length === 0) return '<p class="empty">暂无客户端连接</p>';
-  return `<ul class="list">${clientIds
-    .map((id) => `<li>${escapeHtml(id)}</li>`)
+/** 渲染在线客户端列表，并标出各自最后上报的阶段（一眼看出谁卡住了） */
+function renderClientList(clients: ClientView[]): string {
+  if (clients.length === 0) return '<p class="empty">暂无客户端连接</p>';
+  return `<ul class="list">${clients
+    .map(({ id, latestStage }) => {
+      const stage = latestStage
+        ? `<span class="tag">${escapeHtml(STAGE_LABELS[latestStage.stage] ?? latestStage.stage)}</span>` +
+          `<span class="hint">${formatClock(latestStage.at)}${
+            latestStage.detail ? ` · ${escapeHtml(latestStage.detail)}` : ''
+          }</span>`
+        : '<span class="hint">无阶段上报</span>';
+      return `<li>${escapeHtml(id)}${stage}</li>`;
+    })
+    .join('')}</ul>`;
+}
+
+/** 只取时分秒：状态页面向排查场景，日期信息意义不大 */
+function formatClock(at: number): string {
+  return new Date(at).toLocaleTimeString('zh-CN', { hour12: false });
+}
+
+/**
+ * 渲染客户端阶段上报的时间线（新 → 旧）。
+ * 双方的推进过程在同一张表里对齐，卡在哪一步、谁先掉队一目了然。
+ */
+function renderStageList(stages: StageEvent[]): string {
+  if (stages.length === 0) {
+    return '<p class="empty">暂无阶段上报（客户端可能为旧版本，或已用 --no-report 关闭上报）</p>';
+  }
+  return `<ul class="list">${stages
+    .map((e) => {
+      const target = e.peerId ? ` <span class="arrow">→</span> ${escapeHtml(e.peerId)}` : '';
+      const round = e.session ? `<span class="tag">#${e.session}</span>` : '';
+      const detail = e.detail ? `<span class="hint">${escapeHtml(e.detail)}</span>` : '';
+      return (
+        `<li><span class="time">${formatClock(e.at)}</span> ${escapeHtml(e.clientId)}${target}` +
+        `<span class="stage">${escapeHtml(STAGE_LABELS[e.stage] ?? e.stage)}</span>${round}${detail}</li>`
+      );
+    })
     .join('')}</ul>`;
 }
 
@@ -64,10 +107,11 @@ function renderPairList(pairs: PairSession[]): string {
 export function renderStatusPage(opts: {
   status: ServerStatus;
   wsEndpoint: string;
-  clientIds: string[];
+  clients: ClientView[];
   pairs: PairSession[];
+  stages: StageEvent[];
 }): string {
-  const { status, wsEndpoint, clientIds, pairs } = opts;
+  const { status, wsEndpoint, clients, pairs, stages } = opts;
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -87,6 +131,8 @@ export function renderStatusPage(opts: {
     .list li { padding: 8px 12px; background: #f8f9fa; margin-bottom: 4px; border-radius: 4px; font-family: monospace; font-size: 13px; }
     .arrow { color: #0a7; margin: 0 6px; }
     .tag { background: #e7f1ff; color: #0b5ed7; border-radius: 3px; padding: 1px 5px; margin-left: 8px; font-size: 11px; }
+    .stage { background: #eef7ee; color: #17692a; border-radius: 3px; padding: 1px 5px; margin-left: 8px; font-size: 11px; }
+    .time { color: #888; margin-right: 8px; }
     .hint { color: #999; margin-left: 8px; font-size: 11px; }
     .empty { color: #999; font-style: italic; }
     .section { margin-top: 24px; }
@@ -106,7 +152,7 @@ export function renderStatusPage(opts: {
 
   <div class="section">
     <h3>已注册客户端</h3>
-    ${renderClientList(clientIds)}
+    ${renderClientList(clients)}
   </div>
 
   <div class="section">
@@ -114,8 +160,14 @@ export function renderStatusPage(opts: {
     ${renderPairList(pairs)}
   </div>
 
+  <div class="section">
+    <h3>阶段上报时间线（最近 ${stages.length} 条）</h3>
+    ${renderStageList(stages)}
+  </div>
+
   <div class="footer">
     <p>API: <code>GET /health</code> 返回 JSON 状态</p>
+    <p>排查: <code>GET /stages</code> 返回完整阶段上报时间线（JSON）</p>
     <p>下载: <code>GET /client.js</code> 获取客户端脚本</p>
     <p>最后更新: ${status.timestamp}</p>
   </div>

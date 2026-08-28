@@ -4,7 +4,10 @@ import nodeDataChannel, { type DataChannel, type PeerConnection } from 'node-dat
 
 import {
   PROTOCOL_VERSION,
+  SIGNALING_IDLE_TIMEOUT,
+  SIGNALING_PING_INTERVAL,
   parseMessage,
+  type ClientStage,
   type ClientToServerMessage,
   type PairWaitingReason,
   type PeerRole,
@@ -67,6 +70,10 @@ interface PeerSession {
   retryTimer: ReturnType<typeof setTimeout> | null;
   retryAttempts: number;
   pendingCandidates: PendingCandidate[];
+  /** 本轮已发出的本地候选数，仅用于阶段上报 */
+  localCandidates: number;
+  /** 本轮已收到的远端候选数，仅用于阶段上报 */
+  remoteCandidates: number;
   waiters: Waiter[];
 }
 
@@ -94,6 +101,12 @@ export interface WebRTCTunnelClientOptions {
   heartbeatTimeout?: number;
   /** 阶段二（SDP/ICE 交换）超时，不影响阶段一的无限等待 */
   connectTimeout?: number;
+  /** 信令通道 ping 间隔 (ms)，0 = 关闭保活（不建议） */
+  signalingPingInterval?: number;
+  /** 信令通道静默超时 (ms)：超过该时长未收到服务端任何帧即判定连接已死并重连 */
+  signalingIdleTimeout?: number;
+  /** 是否向服务端上报建连各阶段状态（仅供排查，不影响连接） */
+  reportStatus?: boolean;
   reconnect?: ReconnectOptions;
   /** 是否输出阶段流转日志 */
   verbose?: boolean;
@@ -114,14 +127,22 @@ export interface WebRTCTunnelClientOptions {
  * 角色（initiator / answerer）完全由服务端指派，客户端不做任何仲裁，
  * 因此双方同时 connect() 也不会产生 offer 冲突。
  *
+ * 信令通道自带 ping / 静默超时检测（见 `_startSignalingKeepalive`）：配对等待期
+ * 这条连接完全静默，若不主动探测，NAT 回收映射造成的半开死连接将无法被察觉，
+ * 表现为「本端永久停在等待、对端反复建连超时」的假死。
+ *
+ * 各阶段状态会通过 `status` 消息上报到服务端（可用 `reportStatus: false` 关闭），
+ * 便于在服务端一处对齐双方时间线来排查问题。
+ *
  * 事件:
  *   'registered'    ()                      - 在信令服务器注册成功
  *   'pair-invite'   (peerId)                - 收到对端的配对邀请
  *   'pair-waiting'  (peerId, reason)        - 配对未完成，正在等待对端
  *   'paired'        (peerId, role)          - 配对成功，进入建连阶段
  *   'unpaired'      (peerId, reason)        - 配对被解除
- *   'connection'    (Tunnel, peerId)        - 被动接受的连接建立成功
- *   'connected'     (Tunnel, peerId)        - 主动 connect() 建立成功
+ *   'tunnel'        (Tunnel, peerId, info)  - 隧道建立（含每一次重连），推荐订阅
+ *   'connection'    (Tunnel, peerId)        - 【兼容】被动接受的连接建立成功
+ *   'connected'     (Tunnel, peerId)        - 【兼容】主动 connect() 建立成功
  *   'disconnected'  ()                      - 与信令服务器断开
  *   'reconnecting'  (attempt)               - 正在重连信令服务器
  *   'reconnected'   ()                      - 信令服务器重连成功
@@ -137,6 +158,9 @@ export class WebRTCTunnelClient extends EventEmitter {
   private _heartbeatInterval: number;
   private _heartbeatTimeout: number;
   private _connectTimeout: number;
+  private _signalingPingInterval: number;
+  private _signalingIdleTimeout: number;
+  private _reportStatus: boolean;
   private _verbose: boolean;
   private _acceptPeerHook?: (peerId: string) => boolean;
   private _reconnectOpts: Required<ReconnectOptions>;
@@ -150,6 +174,12 @@ export class WebRTCTunnelClient extends EventEmitter {
 
   private _signalingReconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private _signalingReconnectAttempts = 0;
+
+  /** 信令通道保活定时器，仅在连接存续期间有效 */
+  private _signalingKeepaliveTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** 最近一次收到服务端任何帧（消息 / ping / pong）的时间，用于静默超时判定 */
+  private _lastSignalingActivity = 0;
 
   /** 每个对端唯一的会话记录：peerId → PeerSession */
   private _peers: Map<string, PeerSession> = new Map();
@@ -165,6 +195,9 @@ export class WebRTCTunnelClient extends EventEmitter {
     this._heartbeatInterval = opts.heartbeatInterval ?? 5000;
     this._heartbeatTimeout = opts.heartbeatTimeout ?? 15000;
     this._connectTimeout = opts.connectTimeout ?? 30000;
+    this._signalingPingInterval = opts.signalingPingInterval ?? SIGNALING_PING_INTERVAL;
+    this._signalingIdleTimeout = opts.signalingIdleTimeout ?? SIGNALING_IDLE_TIMEOUT;
+    this._reportStatus = opts.reportStatus ?? true;
     this._verbose = opts.verbose ?? false;
     this._acceptPeerHook = opts.acceptPeer;
 
@@ -255,6 +288,8 @@ export class WebRTCTunnelClient extends EventEmitter {
   close(): void {
     this._closed = true;
 
+    this._stopSignalingKeepalive();
+
     if (this._signalingReconnectTimer) {
       clearTimeout(this._signalingReconnectTimer);
       this._signalingReconnectTimer = null;
@@ -293,12 +328,18 @@ export class WebRTCTunnelClient extends EventEmitter {
 
       ws.on('open', () => {
         this._send({ type: 'register', id: this.id, protocol: PROTOCOL_VERSION });
+        this._startSignalingKeepalive(ws);
       });
 
       ws.on('message', (raw) => {
+        this._lastSignalingActivity = Date.now();
         const msg = parseMessage<ServerToClientMessage>(raw.toString());
         if (msg) this._handleServerMessage(msg);
       });
+
+      // 服务端的 ping 与本方 ping 的 pong 回应，都算作「连接仍然可用」的证据
+      ws.on('ping', () => { this._lastSignalingActivity = Date.now(); });
+      ws.on('pong', () => { this._lastSignalingActivity = Date.now(); });
 
       ws.on('close', () => {
         settle(new Error('信令连接在注册完成前被关闭'));
@@ -316,6 +357,7 @@ export class WebRTCTunnelClient extends EventEmitter {
   /** 信令连接断开。注意：这不会影响已建立的 P2P 隧道 */
   private _handleSignalingClose(ws: WebSocket): void {
     if (this._ws !== ws) return; // 已被新连接取代，忽略旧连接的关闭
+    this._stopSignalingKeepalive();
     this._ws = null;
     this._registered = false;
     this.emit('disconnected');
@@ -348,12 +390,60 @@ export class WebRTCTunnelClient extends EventEmitter {
     }, this._reconnectOpts.signalingReconnectInterval);
   }
 
+  /**
+   * 启动信令通道保活。
+   *
+   * 配对等待期这条连接完全静默（本端只是等对方上线，不会发任何业务消息），
+   * 一旦 NAT / 防火墙回收空闲映射，连接就会变成半开死连接：本端收不到 close，
+   * 也就不会触发重连，永久停在「等待配对」。因此这里做两件事：
+   *   1. 周期性主动 ping，让链路上的映射保持活跃，同时把死链暴露出来；
+   *   2. 超过静默阈值仍未收到服务端任何帧，就 terminate 掉，交给既有重连逻辑。
+   *
+   * terminate 而非 close：死连接上的关闭握手永远发不出去，只有强制销毁才会立刻
+   * 触发 close 事件。
+   */
+  private _startSignalingKeepalive(ws: WebSocket): void {
+    this._stopSignalingKeepalive();
+    if (this._signalingPingInterval <= 0) return;
+
+    this._lastSignalingActivity = Date.now();
+    this._signalingKeepaliveTimer = setInterval(() => {
+      // 已被新连接取代：旧定时器立即退场
+      if (this._ws !== ws) {
+        this._stopSignalingKeepalive();
+        return;
+      }
+
+      const idle = Date.now() - this._lastSignalingActivity;
+      if (idle >= this._signalingIdleTimeout) {
+        this._log(`信令连接已静默 ${idle}ms，判定为失效连接，强制重连`);
+        this._stopSignalingKeepalive();
+        this._emitError(new Error(`信令连接静默超时 (${this._signalingIdleTimeout}ms)`));
+        try { ws.terminate(); } catch { try { ws.close(); } catch { /* ignore */ } }
+        return;
+      }
+
+      try { ws.ping(); } catch { /* ignore，静默超时最终会兜住 */ }
+    }, this._signalingPingInterval);
+  }
+
+  private _stopSignalingKeepalive(): void {
+    if (this._signalingKeepaliveTimer) {
+      clearInterval(this._signalingKeepaliveTimer);
+      this._signalingKeepaliveTimer = null;
+    }
+  }
+
   private _onRegistered(): void {
+    const afterReconnect = this._signalingReconnectAttempts > 0;
     this._registered = true;
     this._signalingReconnectAttempts = 0;
     this._registrationSettle?.();
     this._log('已在信令服务器注册');
     this.emit('registered');
+    this._reportStage('registered', {
+      detail: afterReconnect ? '信令重连后重新注册' : '首次注册',
+    });
 
     // 重连后服务端已丢失配对状态，为所有未建立隧道的对端重新声明意向
     this._redeclareIntents();
@@ -428,6 +518,7 @@ export class WebRTCTunnelClient extends EventEmitter {
     }
     this._log(`向 "${peerId}" 声明配对意向`);
     this._send({ type: 'pair', peerId });
+    this._reportStage('pair_declared', { peerId });
   }
 
   /**
@@ -454,6 +545,7 @@ export class WebRTCTunnelClient extends EventEmitter {
     this._log(`收到 "${peerId}" 的配对邀请，确认配对`);
     this.emit('pair-invite', peerId);
     this._send({ type: 'pair', peerId });
+    this._reportStage('pair_confirmed', { peerId });
   }
 
   /** 对端尚未就绪。此处刻意不设超时：注册/配对阶段无限等待对方接入 */
@@ -461,6 +553,7 @@ export class WebRTCTunnelClient extends EventEmitter {
     const hint = reason === 'peer_offline' ? '对端尚未接入信令服务器' : '等待对端确认配对';
     this._log(`与 "${peerId}" 的配对等待中：${hint}`);
     this.emit('pair-waiting', peerId, reason);
+    this._reportStage('pair_waiting', { peerId, detail: `${hint} (${reason})` });
   }
 
   /**
@@ -484,6 +577,7 @@ export class WebRTCTunnelClient extends EventEmitter {
 
     this._log(`与 "${peerId}" 配对成功：角色=${role}，轮次 #${sessionNo}`);
     this.emit('paired', peerId, role);
+    this._reportStage('paired', { peerId, session: sessionNo, detail: `角色=${role}` });
 
     this._beginHandshake(session);
   }
@@ -495,6 +589,7 @@ export class WebRTCTunnelClient extends EventEmitter {
 
     this._log(`与 "${peerId}" 的配对已解除 (${reason})`);
     this.emit('unpaired', peerId, reason);
+    this._reportStage('unpaired', { peerId, detail: reason });
 
     // 对端已明确离开或重置，本轮连接不可能恢复
     this._discardTunnel(session);
@@ -527,9 +622,13 @@ export class WebRTCTunnelClient extends EventEmitter {
   private _beginHandshake(session: PeerSession): void {
     const pc = new nodeDataChannel.PeerConnection(this.id, { iceServers: this._iceServers });
     session.pc = pc;
+    // 候选计数按轮次统计：上一轮的数字对排查本轮没有意义
+    session.localCandidates = 0;
+    session.remoteCandidates = 0;
 
     // ⚠️ 必须在产生任何 SDP / candidate 之前注册回调，否则会丢事件
     pc.onLocalCandidate((candidate: string, mid: string) => {
+      session.localCandidates++;
       this._send({
         type: 'candidate',
         peerId: session.peerId,
@@ -541,6 +640,7 @@ export class WebRTCTunnelClient extends EventEmitter {
     pc.onLocalDescription((sdp: string, type: string) => {
       this._sendLocalDescription(session, sdp, type);
     });
+    this._observePeerConnection(session, pc);
 
     if (session.role === 'initiator') this._setupInitiator(session, pc);
     else this._setupAnswerer(session, pc);
@@ -552,28 +652,33 @@ export class WebRTCTunnelClient extends EventEmitter {
   /** initiator：主动创建 DataChannel，node-datachannel 随即生成并回调 offer */
   private _setupInitiator(session: PeerSession, pc: PeerConnection): void {
     const dc = pc.createDataChannel(DATA_CHANNEL_LABEL);
-    dc.onOpen(() => this._openTunnel(session, dc));
+    dc.onOpen(() => this._openTunnel(session, pc, dc));
     dc.onError((err: string) => {
+      if (session.pc !== pc) return; // 已被新一轮取代的旧 pc，忽略其迟到回调
       this._failHandshake(session, new Error(`DataChannel 错误: ${String(err)}`));
     });
   }
 
   /** answerer：等待对端的 DataChannel。onDataChannel 必须在 setRemoteDescription 之前注册 */
   private _setupAnswerer(session: PeerSession, pc: PeerConnection): void {
-    pc.onDataChannel((dc: DataChannel) => this._openTunnel(session, dc));
+    pc.onDataChannel((dc: DataChannel) => this._openTunnel(session, pc, dc));
   }
 
   private _sendLocalDescription(session: PeerSession, sdp: string, type: string): void {
+    const { peerId, session: round } = session;
     if (type === DescriptionType.Offer) {
-      this._send({ type: 'offer', peerId: session.peerId, session: session.session, sdp });
+      this._send({ type: 'offer', peerId, session: round, sdp });
+      this._reportStage('offer_sent', { peerId, session: round });
     } else if (type === DescriptionType.Answer) {
-      this._send({ type: 'answer', peerId: session.peerId, session: session.session, sdp });
+      this._send({ type: 'answer', peerId, session: round, sdp });
+      this._reportStage('answer_sent', { peerId, session: round });
     }
   }
 
   private _onRemoteOffer(peerId: string, sessionNo: number, sdp: string): void {
     const session = this._requireHandshake(peerId, sessionNo, 'answerer');
     if (!session?.pc) return;
+    this._reportStage('offer_received', { peerId, session: sessionNo });
     session.pc.setRemoteDescription(sdp, DescriptionType.Offer as any);
     this._flushPendingCandidates(session);
   }
@@ -581,6 +686,7 @@ export class WebRTCTunnelClient extends EventEmitter {
   private _onRemoteAnswer(peerId: string, sessionNo: number, sdp: string): void {
     const session = this._requireHandshake(peerId, sessionNo, 'initiator');
     if (!session?.pc) return;
+    this._reportStage('answer_received', { peerId, session: sessionNo });
     session.pc.setRemoteDescription(sdp, DescriptionType.Answer as any);
     this._flushPendingCandidates(session);
   }
@@ -594,6 +700,9 @@ export class WebRTCTunnelClient extends EventEmitter {
     const session = this._peers.get(peerId);
     // 轮次不匹配说明是上一轮遗留的迟到 candidate，丢弃以免污染新的 PeerConnection
     if (!session || session.session !== sessionNo || !session.pc) return;
+
+    // 候选逐条上报太吵，只累计条数，由 ICE 收集状态变化时一并带出
+    session.remoteCandidates++;
 
     try {
       session.pc.addRemoteCandidate(candidate, mid);
@@ -648,6 +757,12 @@ export class WebRTCTunnelClient extends EventEmitter {
   /** 建连失败：作废本轮配对，退回阶段一（按配置决定是否重试） */
   private _failHandshake(session: PeerSession, err: Error): void {
     if (session.phase !== 'connecting') return;
+    // 轮次与候选数会被 _teardownHandshake 清零，先取出用于上报
+    this._reportStage('handshake_failed', {
+      peerId: session.peerId,
+      session: session.session,
+      detail: `${err.message}（本地候选 ${session.localCandidates} 条，远端候选 ${session.remoteCandidates} 条）`,
+    });
     this._teardownHandshake(session);
     this._emitError(err);
     if (this._closed) return;
@@ -661,8 +776,21 @@ export class WebRTCTunnelClient extends EventEmitter {
 
   /* ==================== 隧道生命周期 ==================== */
 
-  /** DataChannel 打开：封装为 Tunnel，会话进入 connected 阶段 */
-  private _openTunnel(session: PeerSession, dc: DataChannel): void {
+  /**
+   * DataChannel 打开：封装为 Tunnel，会话进入 connected 阶段。
+   *
+   * `pc` 参数用于身份校验，不可省略：node-datachannel 的回调经由后台线程投递，
+   * 上一轮 pc 关闭前排队的 onOpen / onDataChannel 仍可能在新一轮握手之后才到达。
+   * 若不校验就放行，会用一条已废弃的 DataChannel 覆盖当前隧道，并顺手清掉本轮的
+   * 超时保护 —— 两端与服务端都显示「隧道已建立」，而数据实际发进了黑洞。
+   */
+  private _openTunnel(session: PeerSession, pc: PeerConnection, dc: DataChannel): void {
+    if (session.pc !== pc) {
+      this._log(`忽略已废弃 PeerConnection 迟到的 DataChannel（对端 "${session.peerId}"）`);
+      try { dc.close(); } catch { /* ignore */ }
+      return;
+    }
+
     this._clearHandshakeTimer(session);
 
     const tunnel = new Tunnel(dc, {
@@ -682,10 +810,30 @@ export class WebRTCTunnelClient extends EventEmitter {
     this._bindTunnelLifecycle(session, tunnel);
 
     this._log(`与 "${session.peerId}" 的 P2P 隧道已建立 (${session.role})`);
+    this._reportStage('tunnel_open', {
+      peerId: session.peerId,
+      session: session.session,
+      detail: `角色=${session.role}，本地候选 ${session.localCandidates} 条，远端候选 ${session.remoteCandidates} 条`,
+    });
     this._resolveWaiters(session, tunnel);
 
     if (isReconnect) this.emit('tunnel-reconnected', session.peerId);
-    // 主动方派发 'connected'，被动方派发 'connection'
+
+    // 每次隧道建立（含每一次重连）都派发的稳定事件。
+    //
+    // 调用方必须订阅它，而不是只用 connect() 的返回值或 connected / connection：
+    // 重连会换出一个**全新的 Tunnel 对象**，绑在旧对象上的 'data' 监听与发送逻辑
+    // 会随之失效，本端既收不到也发不出，但两端与服务端都仍显示「隧道已建立」——
+    // 这正是「通道假成功」的成因。connected / connection 按 passive 二选一派发，
+    // 而 passive 会随首次 connect() / 配对邀请的到达时序变化，靠它们无法稳定接管重连。
+    this.emit('tunnel', tunnel, session.peerId, {
+      peerId: session.peerId,
+      role: session.role,
+      passive: session.passive,
+      reconnected: isReconnect,
+    });
+
+    // 【兼容旧用法】主动方派发 'connected'，被动方派发 'connection'
     this.emit(session.passive ? 'connection' : 'connected', tunnel, session.peerId);
   }
 
@@ -712,6 +860,7 @@ export class WebRTCTunnelClient extends EventEmitter {
    */
   private _handleTunnelDrop(session: PeerSession): void {
     const { peerId } = session;
+    this._reportStage('tunnel_closed', { peerId, session: session.session });
     session.phase = 'pairing';
     session.role = null;
     session.session = 0;
@@ -752,6 +901,10 @@ export class WebRTCTunnelClient extends EventEmitter {
 
     session.retryAttempts = attempt;
     this.emit('tunnel-reconnecting', session.peerId, attempt);
+    this._reportStage('repairing', {
+      peerId: session.peerId,
+      detail: `第 ${attempt} 次重新配对，${this._reconnectOpts.tunnelReconnectInterval}ms 后发起`,
+    });
 
     session.retryTimer = setTimeout(() => {
       session.retryTimer = null;
@@ -785,6 +938,8 @@ export class WebRTCTunnelClient extends EventEmitter {
         retryTimer: null,
         retryAttempts: 0,
         pendingCandidates: [],
+        localCandidates: 0,
+        remoteCandidates: 0,
         waiters: [],
       };
       this._peers.set(peerId, session);
@@ -831,6 +986,63 @@ export class WebRTCTunnelClient extends EventEmitter {
       return this._acceptPeerHook(peerId) !== false;
     } catch {
       return false;
+    }
+  }
+
+  /* ==================== 状态上报（旁路观测） ==================== */
+
+  /**
+   * 向服务端上报当前所处阶段。
+   *
+   * 纯旁路：不等待回复、失败也不重试，绝不影响连接流程本身。
+   * 价值在于服务端能把双方的时间线对齐到一处 —— 单看某一端的日志时，
+   * 「我以为配对成功了」和「对方根本没收到」是无法区分的。
+   */
+  private _reportStage(
+    stage: ClientStage,
+    opts: { peerId?: string; session?: number; detail?: string } = {}
+  ): void {
+    if (!this._reportStatus) return;
+    this._send({
+      type: 'status',
+      stage,
+      ...(opts.peerId ? { peerId: opts.peerId } : {}),
+      ...(opts.session ? { session: opts.session } : {}),
+      ...(opts.detail ? { detail: opts.detail } : {}),
+    });
+  }
+
+  /**
+   * 订阅 PeerConnection 的状态与 ICE 收集进展并上报。
+   *
+   * 这两个回调是判断「建连超时到底卡在哪」的关键：卡在 ICE 收集说明本端
+   * 拿不到候选（STUN 不可达），收集完成但连接始终不 connected 说明候选
+   * 交换或打洞失败。部分 node-datachannel 版本没有这些回调，缺失时静默跳过。
+   */
+  private _observePeerConnection(session: PeerSession, pc: PeerConnection): void {
+    const pcAny = pc as any;
+
+    if (typeof pcAny.onStateChange === 'function') {
+      pcAny.onStateChange((state: string) => {
+        if (session.pc !== pc) return; // 已被新一轮取代的旧 pc，忽略其迟到回调
+        this._log(`与 "${session.peerId}" 的连接状态: ${state}`);
+        this._reportStage('pc_state', {
+          peerId: session.peerId,
+          session: session.session,
+          detail: state,
+        });
+      });
+    }
+
+    if (typeof pcAny.onGatheringStateChange === 'function') {
+      pcAny.onGatheringStateChange((state: string) => {
+        if (session.pc !== pc) return;
+        this._reportStage('ice_gathering', {
+          peerId: session.peerId,
+          session: session.session,
+          detail: `${state}（本地候选 ${session.localCandidates} 条）`,
+        });
+      });
     }
   }
 
