@@ -1,7 +1,12 @@
 #!/bin/bash
-# WebRTC Tunnel 客户端安装脚本
+# WebRTC Tunnel 客户端安装脚本（仅瘦身版 client.js 需要）
 # 用法: ./install-client.sh [安装目录名]
 # 默认目录名: webrtc-client
+#
+# 说明: 本脚本只做一件事 —— 装好原生依赖 node-datachannel，供瘦身版 client.js 使用。
+#       若目标机器没有编译环境，或不想折腾依赖，直接下载免安装版即可跳过本脚本：
+#         curl -O http://<信令服务器地址>:9876/client-standalone.js
+#         node client-standalone.js --id <客户端ID> --signaling ws://<信令服务器地址>
 
 set -e
 
@@ -91,4 +96,7 @@ echo ""
 echo "  示例:"
 echo "     curl -O http://192.168.1.100:9876/client.js"
 echo "     node client.js --id my-node --signaling ws://192.168.1.100:9876"
+echo ""
+echo "💡 提示: 也有免安装版客户端（内置 node-datachannel，无需本脚本）:"
+echo "     curl -O http://192.168.1.100:9876/client-standalone.js"
 echo ""

@@ -2,6 +2,8 @@ import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 // @ts-ignore - 虚拟模块，由 Rollup 插件注入
 import clientScript from 'virtual:client-script';
+// @ts-ignore - 虚拟模块，由 Rollup 插件注入
+import standaloneClientScript from 'virtual:client-standalone-script';
 
 import {
   PROTOCOL_VERSION,
@@ -15,7 +17,7 @@ import {
 } from './protocol';
 import { PairRegistry, type PairSession } from './pair_registry';
 import { StageLog, formatStageEvent, type StageEvent } from './stage_log';
-import { buildStatus, renderStatusPage } from './status_page';
+import { buildStatus, renderStatusPage, type ClientDownload } from './status_page';
 
 /** 单条 WebSocket 连接的上下文 */
 interface ClientConnection {
@@ -28,6 +30,29 @@ interface ClientConnection {
    */
   alive: boolean;
 }
+
+/**
+ * 可供下载的客户端脚本。两份产物同源，差别只在 node-datachannel 的携带方式：
+ *
+ *   client.js            瘦身版，体积小，运行前需 `npm install node-datachannel`
+ *   client-standalone.js 免安装版，内置原生扩展，单文件即可运行（与构建平台绑定）
+ *
+ * 内容都是构建时由 Rollup 注入的字符串常量，因此服务端仍是「单文件、零依赖」。
+ */
+const CLIENT_BUNDLES: { path: string; fileName: string; label: string; script: string }[] = [
+  {
+    path: '/client.js',
+    fileName: 'client.js',
+    label: '瘦身版（需自行 npm install node-datachannel）',
+    script: clientScript,
+  },
+  {
+    path: '/client-standalone.js',
+    fileName: 'client-standalone.js',
+    label: '免安装版（已内置 node-datachannel，单文件即可运行）',
+    script: standaloneClientScript,
+  },
+];
 
 /**
  * WebRTC 信令服务器
@@ -50,10 +75,11 @@ interface ClientConnection {
  * 避免出现「一方在阶段二、另一方还在阶段一」的永久错位。
  *
  * HTTP 端点:
- *   GET /          - 浏览器访问返回状态页面，API 访问返回 JSON
- *   GET /health    - 健康检查，始终返回 JSON
- *   GET /stages    - 客户端阶段上报的时间线（JSON），用于排查建连问题
- *   GET /client.js - 下载客户端脚本（构建时嵌入）
+ *   GET /                     - 浏览器访问返回状态页面，API 访问返回 JSON
+ *   GET /health               - 健康检查，始终返回 JSON
+ *   GET /stages               - 客户端阶段上报的时间线（JSON），用于排查建连问题
+ *   GET /client.js            - 下载瘦身版客户端脚本（构建时嵌入）
+ *   GET /client-standalone.js - 下载免安装版客户端脚本（构建时嵌入，含原生扩展）
  */
 export class SignalingServer {
   private _port: number;
@@ -200,10 +226,13 @@ export class SignalingServer {
       return;
     }
 
+    const bundle = CLIENT_BUNDLES.find((item) => item.path === req.url);
+    if (bundle) {
+      this._serveClientScript(res, bundle.script, bundle.fileName);
+      return;
+    }
+
     switch (req.url) {
-      case '/client.js':
-        this._serveClientScript(res);
-        return;
       case '/stages':
         this._serveStageLog(res);
         return;
@@ -218,18 +247,27 @@ export class SignalingServer {
   }
 
   /** 提供客户端脚本下载（内容由 Rollup 在构建 server 时注入） */
-  private _serveClientScript(res: http.ServerResponse): void {
-    if (!clientScript) {
+  private _serveClientScript(res: http.ServerResponse, script: string, fileName: string): void {
+    if (!script) {
       res.writeHead(404);
-      res.end('客户端脚本未嵌入，请重新构建服务器');
+      res.end(`客户端脚本 ${fileName} 未嵌入，请重新构建服务器`);
       return;
     }
     res.writeHead(200, {
       'Content-Type': 'application/javascript; charset=utf-8',
-      'Content-Disposition': 'attachment; filename="client.js"',
-      'Content-Length': Buffer.byteLength(clientScript),
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+      'Content-Length': Buffer.byteLength(script),
     });
-    res.end(clientScript);
+    res.end(script);
+  }
+
+  /** 状态页上的客户端下载入口（体积按实际嵌入内容计算，未嵌入的标为不可用） */
+  private _clientDownloads(): ClientDownload[] {
+    return CLIENT_BUNDLES.map(({ path, label, script }) => ({
+      path,
+      label,
+      bytes: script ? Buffer.byteLength(script) : 0,
+    }));
   }
 
   /** `/health` 始终返回 JSON；`/` 按 Accept 头决定返回 JSON 还是 HTML 状态页 */
@@ -253,6 +291,7 @@ export class SignalingServer {
       })),
       pairs: this._registry.snapshot(),
       stages: this._stageLog.recent(30),
+      downloads: this._clientDownloads(),
     });
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end(html);

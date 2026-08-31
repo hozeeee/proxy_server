@@ -21,6 +21,16 @@ export interface ServerStatus {
   timestamp: string;
 }
 
+/** 状态页上的一个客户端下载入口 */
+export interface ClientDownload {
+  /** HTTP 路径，如 /client.js */
+  path: string;
+  /** 该版本的用途说明 */
+  label: string;
+  /** 脚本字节数，0 表示构建时未嵌入 */
+  bytes: number;
+}
+
 /** 收集 JSON 形式的服务器状态，供 `GET /health` 与 `GET /` 复用 */
 export function buildStatus(clientCount: number, pairCount: number): ServerStatus {
   return {
@@ -100,6 +110,30 @@ function renderPairList(pairs: PairSession[]): string {
     .join('')}</ul>`;
 }
 
+/** 人类可读的体积，方便判断下载的是哪一版（免安装版明显更大） */
+function formatBytes(bytes: number): string {
+  return bytes >= 1048576
+    ? `${(bytes / 1048576).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+/**
+ * 渲染客户端下载入口。
+ * 两版并列展示，使用者按自己机器有没有编译环境自行取用。
+ */
+function renderDownloadList(downloads: ClientDownload[]): string {
+  if (downloads.length === 0) return '<p class="empty">无可下载的客户端脚本</p>';
+  return `<ul class="list">${downloads
+    .map(({ path, label, bytes }) =>
+      bytes > 0
+        ? `<li><a href="${escapeHtml(path)}">${escapeHtml(path)}</a>` +
+          `<span class="tag">${formatBytes(bytes)}</span>` +
+          `<span class="hint">${escapeHtml(label)}</span></li>`
+        : `<li>${escapeHtml(path)}<span class="hint">未嵌入（构建时缺少该产物）</span></li>`
+    )
+    .join('')}</ul>`;
+}
+
 /**
  * 渲染浏览器可读的 HTML 状态页。
  * 与 `GET /health` 共用同一份 `ServerStatus`，避免两处数据口径不一致。
@@ -110,8 +144,10 @@ export function renderStatusPage(opts: {
   clients: ClientView[];
   pairs: PairSession[];
   stages: StageEvent[];
+  /** 可下载的客户端脚本；缺省则不渲染该区块 */
+  downloads?: ClientDownload[];
 }): string {
-  const { status, wsEndpoint, clients, pairs, stages } = opts;
+  const { status, wsEndpoint, clients, pairs, stages, downloads = [] } = opts;
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -129,6 +165,8 @@ export function renderStatusPage(opts: {
     code { background: #f5f5f5; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
     .list { list-style: none; padding: 0; }
     .list li { padding: 8px 12px; background: #f8f9fa; margin-bottom: 4px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+    .list li a { color: #0b5ed7; text-decoration: none; }
+    .list li a:hover { text-decoration: underline; }
     .arrow { color: #0a7; margin: 0 6px; }
     .tag { background: #e7f1ff; color: #0b5ed7; border-radius: 3px; padding: 1px 5px; margin-left: 8px; font-size: 11px; }
     .stage { background: #eef7ee; color: #17692a; border-radius: 3px; padding: 1px 5px; margin-left: 8px; font-size: 11px; }
@@ -165,10 +203,18 @@ export function renderStatusPage(opts: {
     ${renderStageList(stages)}
   </div>
 
+  ${
+    downloads.length > 0
+      ? `<div class="section">
+    <h3>客户端下载</h3>
+    ${renderDownloadList(downloads)}
+  </div>`
+      : ''
+  }
+
   <div class="footer">
     <p>API: <code>GET /health</code> 返回 JSON 状态</p>
     <p>排查: <code>GET /stages</code> 返回完整阶段上报时间线（JSON）</p>
-    <p>下载: <code>GET /client.js</code> 获取客户端脚本</p>
     <p>最后更新: ${status.timestamp}</p>
   </div>
 

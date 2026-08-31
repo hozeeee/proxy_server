@@ -8,9 +8,11 @@
     "build": "rollup -c rollup.config.mjs",
     "build:server": "rollup -c rollup.config.mjs --environment TARGET:server",
     "build:client": "rollup -c rollup.config.mjs --environment TARGET:client",
+    "build:standalone": "rollup -c rollup.config.mjs --environment TARGET:standalone",
     "build:test": "rollup -c rollup.config.mjs --environment TARGET:test",
     "server": "node dist/server.js",
     "client": "node dist/client-bin.js",
+    "client:standalone": "node dist/client-standalone.js",
     "test": "node dist/test_e2e.js",
     "___说明___1: dev-server 请拷贝运行该命令": "scp -o ProxyCommand='ncat --proxy 192.168.3.101:8611 --proxy-type http %h %p' dist/server.js root@123.57.52.2:/root/",
     "upload-server": "scp dist/server.js root@123.57.52.2:/root/"

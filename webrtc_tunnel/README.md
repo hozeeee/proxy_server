@@ -142,8 +142,9 @@ webrtc_tunnel/
 │   └── examples/
 │       └── test_e2e.ts           # 端到端测试
 ├── dist/                         # 构建产物（打包后的单文件）
-│   ├── server.js                 # 信令服务器单文件
-│   ├── client-bin.js             # 客户端单文件
+│   ├── server.js                 # 信令服务器单文件（内嵌下面两份客户端以供下载）
+│   ├── client-bin.js             # 客户端单文件 · 瘦身版（node-datachannel 为外部依赖）
+│   ├── client-standalone.js      # 客户端单文件 · 免安装版（内置 node-datachannel）
 │   └── test_e2e.js               # 端到端测试单文件
 ├── rollup.config.mjs             # Rollup 打包配置
 ├── tsconfig.json                 # TypeScript 配置
@@ -162,20 +163,43 @@ npm install
 ## 构建
 
 ```bash
-# 构建 server + client + test
+# 构建全部（两份客户端 + server + test）
 npm run build
 
 # 仅构建信令服务器
 npm run build:server
 
-# 仅构建客户端
+# 仅构建瘦身版客户端
 npm run build:client
+
+# 仅构建免安装版客户端（内联原生扩展，耗时约 15s）
+npm run build:standalone
 
 # 仅构建端到端测试
 npm run build:test
 ```
 
 构建产物在 `dist/` 目录下，为单文件 JS，可直接用 `node` 运行。
+
+> 完整构建时两份客户端必须排在 server 之前：server 会把它们的内容嵌进自己的产物里。
+
+### 两份客户端产物的区别
+
+业务代码是同一份源码，差别只在 `node-datachannel`（WebRTC 原生模块）的携带方式：
+
+| 产物 | 体积 | 运行前提 | 适用场景 |
+|------|------|----------|----------|
+| `client-bin.js` | ~162 KB | 目标机器需 `npm install node-datachannel`（要编译环境） | 已有 Node 依赖环境、在意体积 |
+| `client-standalone.js` | ~3.8 MB | 只要有 Node.js（>=16） | 干净机器、无编译环境、想一键跑 |
+
+免安装版的原理：原生扩展（`.node`）是动态链接库，无法真的变成 JavaScript，因此打包时把它
+brotli 压缩成 base64 内联进产物（9.8MB → 3.6MB），首次运行时还原成磁盘文件再 `dlopen`。
+解包结果缓存在 `~/.cache/webrtc-tunnel/native/`（按版本与内容哈希命名），二次启动直接复用；
+目录不可写或挂了 `noexec` 时，可用环境变量 `WEBRTC_TUNNEL_NATIVE_DIR` 另指一个目录。
+
+> **免安装版与构建机的平台 + 架构绑定**（当前为 `linux-x64`、基于 glibc）。平台不匹配时客户端
+> 会直接报错并提示改用瘦身版。要在一台机器上为别的平台打包，先用 `prebuild-install` 取到对应
+> 平台的 `.node`，再通过 `ND_NATIVE_PATH` / `ND_NATIVE_PLATFORM` / `ND_NATIVE_ARCH` 指定。
 
 ## 使用方式
 
@@ -199,7 +223,8 @@ npm run server
 | `GET /` | 浏览器访问返回 HTML 状态页面（含在线客户端列表与各自当前阶段、配对状态、阶段上报时间线，每 5 秒自动刷新）；API 访问（`Accept: application/json`）返回 JSON |
 | `GET /health` | 健康检查，始终返回 JSON |
 | `GET /stages` | 客户端阶段上报的时间线（JSON，最近 200 条），排查建连问题的主入口 |
-| `GET /client.js` | 下载客户端脚本（构建时自动嵌入） |
+| `GET /client.js` | 下载客户端脚本 · 瘦身版（构建时自动嵌入，需目标机器自备 node-datachannel） |
+| `GET /client-standalone.js` | 下载客户端脚本 · 免安装版（构建时自动嵌入，含原生扩展，单文件即可运行） |
 
 ```bash
 # 健康检查
@@ -209,8 +234,9 @@ curl http://localhost:9876/health
 # 查看双方建连各阶段的时间线
 curl http://localhost:9876/stages
 
-# 下载客户端脚本
-curl -O http://localhost:9876/client.js
+# 下载客户端脚本（两份任选，浏览器打开 `/` 也能看到下载入口与体积）
+curl -O http://localhost:9876/client.js              # 瘦身版
+curl -O http://localhost:9876/client-standalone.js   # 免安装版
 ```
 
 ### 2. 启动客户端
@@ -230,6 +256,22 @@ node dist/client-bin.js --id client-a --connect client-b --signaling ws://1.2.3.
 
 **远程机器部署**：
 
+方式一 · 免安装版（推荐，目标机器只需 Node.js，无需 npm install、无需编译环境）：
+
+```bash
+# 1. 下载并运行
+curl -O http://<服务器地址>:9876/client-standalone.js
+node client-standalone.js --id remote-node --connect peer-id
+
+# 一个命令搞定
+SERVER="<服务器地址>" && curl -sL "http://$SERVER/client-standalone.js" | node - --id client_b --connect client_a --signaling "ws://$SERVER"
+SERVER="<服务器地址>" && curl -sL "http://$SERVER/client-standalone.js" | node - --id client_a --signaling "ws://$SERVER"
+```
+
+> 首次运行会打印一行 `[native] 已解包内置 node-datachannel ...`，属正常现象（见「两份客户端产物的区别」）。
+
+方式二 · 瘦身版（体积小，但需要先装原生依赖）：
+
 ```bash
 # 1. 在远程机器上安装依赖（需要 Node.js 和编译环境）
 ./install-client.sh
@@ -239,9 +281,14 @@ curl -O http://<服务器地址>:9876/client.js
 
 # 3. 运行
 node client.js --id remote-node --connect peer-id
+
+# 一个命令搞定
+SERVER="<服务器地址>" && curl -sL "http://$SERVER/client.js" | node - --id client_b --connect client_a --signaling "ws://$SERVER"
+SERVER="<服务器地址>" && curl -sL "http://$SERVER/client.js" | node - --id client_a --signaling "ws://$SERVER"
 ```
 
-> **注意**: `node-datachannel` 是原生模块，安装时需要 Python 3、make、g++ 编译环境。
+> **注意**: 瘦身版依赖的 `node-datachannel` 是原生模块，安装时需要 Python 3、make、g++ 编译环境。
+> 目标机器装不上（无编译环境 / 无外网）时，请改用免安装版。
 
 **命令行参数**:
 
@@ -549,6 +596,8 @@ open http://<服务器>:9876/
 | 依赖 | 用途 | 打包情况 |
 |------|------|----------|
 | `ws` | WebSocket 信令通信 | ✅ 打包进单文件 |
-| `node-datachannel` | WebRTC DataChannel | ❌ 保持外部依赖（原生模块） |
+| `node-datachannel` | WebRTC DataChannel | 看产物：`client-bin.js` ✅ 保持外部依赖；`client-standalone.js` ✅ 连原生扩展一起内联 |
 
-> 部署时，目标机器需安装 `node-datachannel`（`npm install` 即可），但 `ws` 已打包在内。
+> 服务端（`server.js`）只做信令，不需要 `node-datachannel`，但会把两份客户端产物作为字符串
+> 嵌进自己的单文件里（因此约 4.2MB），使使用者能从 `/client.js` 与 `/client-standalone.js`
+> 自行选择下载哪一份。瘦身版的 `ws` 已打包在内，只差 `node-datachannel`。
